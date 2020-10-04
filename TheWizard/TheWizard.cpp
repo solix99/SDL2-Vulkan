@@ -1,5 +1,5 @@
 // TheWizard.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
+// Hey there
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -1866,7 +1866,7 @@ int main(int argc, char* args[])
 
 					while (playLoop())
 					{
-
+						
 					}
 
 				}
