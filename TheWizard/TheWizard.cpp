@@ -310,7 +310,7 @@ static int processPhysics(void* ptr)
 				}
 				for (unsigned int i = 0; i < MAX_PLAYER_ENTITY; i++)
 				{
-					if (Player[i].getIfSlotUsed())
+					if (Player[i].getIfSlotUsed() && !Player[i].getPlayerDead())
 					{
 						for (unsigned int j = 0; j < MAX_PLAYER_BULLET_COUNT; j++)
 						{
@@ -430,7 +430,7 @@ void handleCollision()
 	
 	for (unsigned int i = 0; i < MAX_PLAYER_ENTITY; i++)
 	{
-		if (Player[i].getIfSlotUsed())
+		if (Player[i].getIfSlotUsed() && !Player[i].getPlayerDead())
 		{
 			if (checkCollision(Player[i].getCollisionRect(), CLIENT.getCollisionRect()))
 			{
@@ -456,7 +456,7 @@ void handleCollision()
 
 	for (unsigned int i = 0; i < MAX_PLAYER_ENTITY; i++)
 	{
-		if (Player[i].getIfSlotUsed())
+		if (Player[i].getIfSlotUsed() && !Player[i].getPlayerDead())
 		{
 			for (unsigned int k = 0; k < MAX_PLAYER_ENTITY; k++)
 			{
@@ -578,7 +578,7 @@ void handleCollision()
 	}
 }
 
-int clientSendData(string input)
+int clientSendData(const string &input)
 {
 	if (strlen(input.c_str()) < DEFAULT_BUFLEN)
 	{
@@ -639,7 +639,7 @@ void renderTextures()
 	}
 	for (unsigned int i = 0; i < MAX_PLAYER_ENTITY; i++)
 	{
-		if (Player[i].getIfSlotUsed())
+		if (Player[i].getIfSlotUsed() && !Player[i].getPlayerDead())
 		{
 			for (unsigned int j = 0; j < MAX_PLAYER_BULLET_COUNT; j++)
 			{
@@ -655,7 +655,7 @@ void renderTextures()
 
 	for (unsigned int i = 0; i < MAX_PLAYER_ENTITY; i++)
 	{
-		if (Player[i].getIfSlotUsed())
+		if (Player[i].getIfSlotUsed() && !Player[i].getPlayerDead())
 		{
 			if (Player[i].getAnimType() == "idle")
 			{
@@ -1360,7 +1360,7 @@ int oldSql(void* ptr)
 
 int v1, v2;
 
-string getFinalData(string data)
+string getFinalData(const string & data)
 {
 	v2 = v1;
 	v1 = data.find(',', v2 + 1);
@@ -1434,7 +1434,7 @@ int recivePacket(void* ptr)
 				string ID = getFinalData(data);
 				for (unsigned int i = 0; i < MAX_PLAYER_ENTITY; i++)
 				{
-					if (Player[i].getIfSlotUsed() && (Player[i].getPlayerID() == ID))
+					if (Player[i].getIfSlotUsed() && !Player[i].getPlayerDead() && (Player[i].getPlayerID() == ID))
 					{
 						Player[i].setIfSlotUsed(false);
 						cout << endl << "REMOVED PLAYER WITH ID " << ID;
@@ -1475,7 +1475,7 @@ int recivePacket(void* ptr)
 
 				for (unsigned int i = 0; i < MAX_PLAYER_ENTITY; i++)
 				{
-					if (Player[i].getIfSlotUsed() && Player[i].getID() == ID[1])
+					if (Player[i].getIfSlotUsed() && !Player[i].getPlayerDead() && Player[i].getID() == ID[1])
 					{
 						Player[i].damageTarget(EP.TEMP.damageAmount);
 
@@ -1489,7 +1489,7 @@ int recivePacket(void* ptr)
 
 				for (unsigned int i = 0; i < MAX_PLAYER_ENTITY; i++)
 				{
-					if (Player[i].getIfSlotUsed())
+					if (Player[i].getIfSlotUsed() && !Player[i].getPlayerDead())
 					{
 						cout << endl << Player[i].getHealth();
 					}
@@ -1523,7 +1523,6 @@ int recivePacket(void* ptr)
 				}
 				EP.EXECUTE.inMatchingScreen = false;
 			}
-
 			else if (identifier == UPDATE_BULLET)
 			{
 				ID[0] = getFinalData(data);
@@ -1580,6 +1579,23 @@ int recivePacket(void* ptr)
 
 				CLIENT.setPosX(atoi(posX[0].c_str()));
 				CLIENT.setPosY(atoi(posY[0].c_str()));
+			}
+			else if (identifier == KILL_PLAYER)
+			{
+				ID[0] = getFinalData(data); // dmg giver
+				ID[1] = getFinalData(data); // dmg taker
+
+				for (unsigned int i = 0; i < MAX_PLAYER_ENTITY; i++)
+				{
+					if (Player[i].getIfSlotUsed() && Player[i].getID() == ID[1])
+					{
+						Player[i].setPlayerDead(true);
+
+						cout << endl << id[0] << " killed " << ID[1];
+
+						break;
+					}
+				}
 			}
 		}
 	}
