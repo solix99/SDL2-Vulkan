@@ -6,31 +6,17 @@ LWindow::LWindow(int w, int h)
 {
 	//ctor
 }
-LWindow::~LWindow()
-{
-	vkDestroyInstance(vInstance, nullptr);
-}
-
-VkInstance &LWindow::getVulkanInstance()
-{
-	return vInstance;
-}
-
-SDL_Window* LWindow::getWindow()
-{
-	return mWindow;
-}
 
 bool LWindow::init()
 {
 	//Create window
 	if (mFullScreen)
 	{
-		mWindow = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, mWidth, mHeight, SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN | SDL_WINDOW_VULKAN);
+		mWindow = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, mWidth, mHeight, SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN);
 	}
 	else
 	{
-		mWindow = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, mWidth, mHeight, SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN);
+		mWindow = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, mWidth, mHeight, SDL_WINDOW_SHOWN);
 	}
 
 	if (mWindow != NULL)

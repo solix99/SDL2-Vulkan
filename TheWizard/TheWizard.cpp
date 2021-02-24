@@ -12,7 +12,6 @@
 #include <fstream>
 #include <conio.h>
 #include "SDL.h"
-#include <SDL_vulkan.h>
 #include <SDL_mixer.h>
 #include "SDL_image.h"
 #include "SDL_ttf.h"
@@ -28,12 +27,6 @@
 #include "mysql.h"
 #include "LAnim.h"
 #include <SDL_thread.h>
-#include <vulkan/vulkan.h>
-#include <assert.h>
-#include <set>
-#include <vulkan/vulkan_core.h>
-#include <vector>
-#include <glm/glm.hpp>
 
 WSADATA wData;
 #pragma comment(lib, "Ws2_32.lib")
@@ -49,770 +42,6 @@ using namespace std;
 
 #define DEFAULT_RESOLUTION_WIDTH 1280
 #define DEFAULT_RESOLUTION_HEIGHT 720	
-
-const char                      gAppName[] = "Wizard";
-const char                      gEngineName[] = "SnyxEngine";
-int                             gWindowWidth = DEFAULT_RESOLUTION_WIDTH;
-int                             gWindowHeight = DEFAULT_RESOLUTION_HEIGHT;
-VkPresentModeKHR                gPresentationMode = VK_PRESENT_MODE_FIFO_RELAXED_KHR;
-VkSurfaceTransformFlagBitsKHR   gTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
-VkFormat                        gFormat = VK_FORMAT_B8G8R8A8_SRGB;
-VkColorSpaceKHR                 gColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-VkImageUsageFlags               gImageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-const std::set<std::string>& getRequestedLayerNames()
-{
-	static std::set<std::string> layers;
-	if (layers.empty())
-	{
-		layers.emplace("VK_LAYER_NV_optimus");
-		layers.emplace("VK_LAYER_LUNARG_standard_validation");
-	}
-	return layers;
-}
-
-/**
- * @return the set of required device extension names
- */
-const std::set<std::string>& getRequestedDeviceExtensionNames()
-{
-	static std::set<std::string> layers;
-	if (layers.empty())
-	{
-		layers.emplace(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-	}
-	return layers;
-}
-
-/**
- * @return the set of required image usage scenarios
- * that need to be supported by the surface and swap chain
- */
-const std::vector<VkImageUsageFlags> getRequestedImageUsages()
-{
-	static std::vector<VkImageUsageFlags> usages;
-	if (usages.empty())
-	{
-		usages.emplace_back(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-	}
-	return usages;
-}
-
-/**
- * Clamps value between min and max
- */
-template<typename T>
-T clamp(T value, T min, T max)
-{
-	return glm::clamp<T>(value, min, max);
-}
-
-/**
- * Callback that receives a debug message from Vulkan
- */
-static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType,
-	uint64_t obj,
-	size_t location,
-	int32_t code,
-	const char* layerPrefix,
-	const char* msg,
-	void* userData)
-{
-	std::cout << "validation layer: " << layerPrefix << ": " << msg << std::endl;
-	return VK_FALSE;
-}
-
-namespace VULKAN
-{
-	VkResult createDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback)
-	{
-		auto func = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugReportCallbackEXT");
-		if (func != nullptr)
-		{
-			return func(instance, pCreateInfo, pAllocator, pCallback);
-		}
-		else
-		{
-			return VK_ERROR_EXTENSION_NOT_PRESENT;
-		}
-	}
-
-	/**
-	 *  Sets up the vulkan messaging callback specified above
-	 */
-	bool setupDebugCallback(VkInstance instance, VkDebugReportCallbackEXT& callback)
-	{
-		VkDebugReportCallbackCreateInfoEXT createInfo = {};
-		createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
-		createInfo.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT;
-		createInfo.pfnCallback = debugCallback;
-
-		if (createDebugReportCallbackEXT(instance, &createInfo, nullptr, &callback) != VK_SUCCESS)
-		{
-			std::cout << "unable to create debug report callback extension\n";
-			return false;
-		}
-		return true;
-	}
-
-
-	/**
-	 * Destroys the callback extension object
-	 */
-	void destroyDebugReportCallbackEXT(VkInstance instance, VkDebugReportCallbackEXT callback, const VkAllocationCallbacks* pAllocator)
-	{
-		auto func = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT");
-		if (func != nullptr)
-		{
-			func(instance, callback, pAllocator);
-		}
-	}
-
-
-	bool getAvailableVulkanLayers(std::vector<std::string>& outLayers)
-	{
-		// Figure out the amount of available layers
-		// Layers are used for debugging / validation etc / profiling..
-		unsigned int instance_layer_count = 0;
-		VkResult res = vkEnumerateInstanceLayerProperties(&instance_layer_count, NULL);
-		if (res != VK_SUCCESS)
-		{
-			std::cout << "unable to query vulkan instance layer property count\n";
-			return false;
-		}
-
-		std::vector<VkLayerProperties> instance_layer_names(instance_layer_count);
-		res = vkEnumerateInstanceLayerProperties(&instance_layer_count, instance_layer_names.data());
-		if (res != VK_SUCCESS)
-		{
-			std::cout << "unable to retrieve vulkan instance layer names\n";
-			return false;
-		}
-
-		// Display layer names and find the ones we specified above
-		std::cout << "found " << instance_layer_count << " instance layers:\n";
-		std::vector<const char*> valid_instance_layer_names;
-		const std::set<std::string>& lookup_layers = getRequestedLayerNames();
-		int count(0);
-		outLayers.clear();
-		for (const auto& name : instance_layer_names)
-		{
-			std::cout << count << ": " << name.layerName << ": " << name.description << "\n";
-			auto it = lookup_layers.find(std::string(name.layerName));
-			if (it != lookup_layers.end())
-				outLayers.emplace_back(name.layerName);
-			count++;
-		}
-
-		// Print the ones we're enabling
-		std::cout << "\n";
-		for (const auto& layer : outLayers)
-			std::cout << "applying layer: " << layer.c_str() << "\n";
-		return true;
-	}
-
-
-	bool getAvailableVulkanExtensions(SDL_Window* window, std::vector<std::string>& outExtensions)
-	{
-		// Figure out the amount of extensions vulkan needs to interface with the os windowing system
-		// This is necessary because vulkan is a platform agnostic API and needs to know how to interface with the windowing system
-		unsigned int ext_count = 0;
-		if (!SDL_Vulkan_GetInstanceExtensions(window, &ext_count, nullptr))
-		{
-			std::cout << "Unable to query the number of Vulkan instance extensions\n";
-			return false;
-		}
-
-		// Use the amount of extensions queried before to retrieve the names of the extensions
-		std::vector<const char*> ext_names(ext_count);
-		if (!SDL_Vulkan_GetInstanceExtensions(window, &ext_count, ext_names.data()))
-		{
-			std::cout << "Unable to query the number of Vulkan instance extension names\n";
-			return false;
-		}
-
-		// Display names
-		std::cout << "found " << ext_count << " Vulkan instance extensions:\n";
-		for (unsigned int i = 0; i < ext_count; i++)
-		{
-			std::cout << i << ": " << ext_names[i] << "\n";
-			outExtensions.emplace_back(ext_names[i]);
-		}
-
-		// Add debug display extension, we need this to relay debug messages
-		outExtensions.emplace_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
-		std::cout << "\n";
-		return true;
-	}
-
-
-	/**
-	 * Creates a vulkan instance using all the available instance extensions and layers
-	 * @return if the instance was created successfully
-	 */
-	bool createVulkanInstance(const std::vector<std::string>& layerNames, const std::vector<std::string>& extensionNames, VkInstance& outInstance)
-	{
-		// Copy layers
-		std::vector<const char*> layer_names;
-		for (const auto& layer : layerNames)
-			layer_names.emplace_back(layer.c_str());
-
-		// Copy extensions
-		std::vector<const char*> ext_names;
-		for (const auto& ext : extensionNames)
-			ext_names.emplace_back(ext.c_str());
-
-		// Get the suppoerted vulkan instance version
-		unsigned int api_version;
-		vkEnumerateInstanceVersion(&api_version);
-
-		// initialize the VkApplicationInfo structure
-		VkApplicationInfo app_info = {};
-		app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-		app_info.pNext = NULL;
-		app_info.pApplicationName = gAppName;
-		app_info.applicationVersion = 1;
-		app_info.pEngineName = gEngineName;
-		app_info.engineVersion = 1;
-		app_info.apiVersion = VK_API_VERSION_1_0;
-
-		// initialize the VkInstanceCreateInfo structure
-		VkInstanceCreateInfo inst_info = {};
-		inst_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-		inst_info.pNext = NULL;
-		inst_info.flags = 0;
-		inst_info.pApplicationInfo = &app_info;
-		inst_info.enabledExtensionCount = static_cast<uint32_t>(ext_names.size());
-		inst_info.ppEnabledExtensionNames = ext_names.data();
-		inst_info.enabledLayerCount = static_cast<uint32_t>(layer_names.size());
-		inst_info.ppEnabledLayerNames = layer_names.data();
-
-		// Create vulkan runtime instance
-		std::cout << "initializing Vulkan instance\n\n";
-		VkResult res = vkCreateInstance(&inst_info, NULL, &outInstance);
-		switch (res)
-		{
-		case VK_SUCCESS:
-			break;
-		case VK_ERROR_INCOMPATIBLE_DRIVER:
-			std::cout << "unable to create vulkan instance, cannot find a compatible Vulkan ICD\n";
-			return false;
-		default:
-			std::cout << "unable to create Vulkan instance: unknown error\n";
-			return false;
-		}
-		return true;
-	}
-
-
-	/**
-	 * Allows the user to select a GPU (physical device)
-	 * @return if query, selection and assignment was successful
-	 * @param outDevice the selected physical device (gpu)
-	 * @param outQueueFamilyIndex queue command family that can handle graphics commands
-	 */
-	bool selectGPU(VkInstance instance, VkPhysicalDevice& outDevice, unsigned int& outQueueFamilyIndex)
-	{
-		// Get number of available physical devices, needs to be at least 1
-		unsigned int physical_device_count(0);
-		vkEnumeratePhysicalDevices(instance, &physical_device_count, nullptr);
-		if (physical_device_count == 0)
-		{
-			std::cout << "No physical devices found\n";
-			return false;
-		}
-
-		// Now get the devices
-		std::vector<VkPhysicalDevice> physical_devices(physical_device_count);
-		vkEnumeratePhysicalDevices(instance, &physical_device_count, physical_devices.data());
-
-		// Show device information
-		std::cout << "found " << physical_device_count << " GPU(s):\n";
-		int count(0);
-		std::vector<VkPhysicalDeviceProperties> physical_device_properties(physical_devices.size());
-		for (auto& physical_device : physical_devices)
-		{
-			vkGetPhysicalDeviceProperties(physical_device, &(physical_device_properties[count]));
-			std::cout << count << ": " << physical_device_properties[count].deviceName << "\n";
-			count++;
-		}
-
-		// Select one if more than 1 is available
-		unsigned int selection_id = 0;
-		if (physical_device_count > 1)
-		{
-			while (true)
-			{
-				std::cout << "select device: ";
-				std::cin >> selection_id;
-				if (selection_id >= physical_device_count || selection_id < 0)
-				{
-					std::cout << "invalid selection, expected a value between 0 and " << physical_device_count - 1 << "\n";
-					continue;
-				}
-				break;
-			}
-		}
-		std::cout << "selected: " << physical_device_properties[selection_id].deviceName << "\n";
-		VkPhysicalDevice selected_device = physical_devices[selection_id];
-
-		// Find the number queues this device supports, we want to make sure that we have a queue that supports graphics commands
-		unsigned int family_queue_count(0);
-		vkGetPhysicalDeviceQueueFamilyProperties(selected_device, &family_queue_count, nullptr);
-		if (family_queue_count == 0)
-		{
-			std::cout << "device has no family of queues associated with it\n";
-			return false;
-		}
-
-		// Extract the properties of all the queue families
-		std::vector<VkQueueFamilyProperties> queue_properties(family_queue_count);
-		vkGetPhysicalDeviceQueueFamilyProperties(selected_device, &family_queue_count, queue_properties.data());
-
-		// Make sure the family of commands contains an option to issue graphical commands.
-		unsigned int queue_node_index = -1;
-		for (unsigned int i = 0; i < family_queue_count; i++)
-		{
-			if (queue_properties[i].queueCount > 0 && queue_properties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
-			{
-				queue_node_index = i;
-				break;
-			}
-		}
-
-		if (queue_node_index < 0)
-		{
-			std::cout << "Unable to find a queue command family that accepts graphics commands\n";
-			return false;
-		}
-
-		// Set the output variables
-		outDevice = selected_device;
-		outQueueFamilyIndex = queue_node_index;
-		return true;
-	}
-
-
-	/**
-	 *  Creates a logical device
-	 */
-	bool createLogicalDevice(VkPhysicalDevice& physicalDevice,
-		unsigned int queueFamilyIndex,
-		const std::vector<std::string>& layerNames,
-		VkDevice& outDevice)
-	{
-		// Copy layer names
-		std::vector<const char*> layer_names;
-		for (const auto& layer : layerNames)
-			layer_names.emplace_back(layer.c_str());
-
-
-		// Get the number of available extensions for our graphics card
-		uint32_t device_property_count(0);
-		if (vkEnumerateDeviceExtensionProperties(physicalDevice, NULL, &device_property_count, NULL) != VK_SUCCESS)
-		{
-			std::cout << "Unable to acquire device extension property count\n";
-			return false;
-		}
-		std::cout << "\nfound " << device_property_count << " device extensions\n";
-
-		// Acquire their actual names
-		std::vector<VkExtensionProperties> device_properties(device_property_count);
-		if (vkEnumerateDeviceExtensionProperties(physicalDevice, NULL, &device_property_count, device_properties.data()) != VK_SUCCESS)
-		{
-			std::cout << "Unable to acquire device extension property names\n";
-			return false;
-		}
-
-		// Match names against requested extension
-		std::vector<const char*> device_property_names;
-		const std::set<std::string>& required_extension_names = getRequestedDeviceExtensionNames();
-		int count = 0;
-		for (const auto& ext_property : device_properties)
-		{
-			std::cout << count << ": " << ext_property.extensionName << "\n";
-			auto it = required_extension_names.find(std::string(ext_property.extensionName));
-			if (it != required_extension_names.end())
-			{
-				device_property_names.emplace_back(ext_property.extensionName);
-			}
-			count++;
-		}
-
-		// Warn if not all required extensions were found
-		if (required_extension_names.size() != device_property_names.size())
-		{
-			std::cout << "not all required device extensions are supported!\n";
-			return false;
-		}
-
-		std::cout << "\n";
-		for (const auto& name : device_property_names)
-			std::cout << "applying device extension: " << name << "\n";
-
-		// Create queue information structure used by device based on the previously fetched queue information from the physical device
-		// We create one command processing queue for graphics
-		VkDeviceQueueCreateInfo queue_create_info;
-		queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-		queue_create_info.queueFamilyIndex = queueFamilyIndex;
-		queue_create_info.queueCount = 1;
-		std::vector<float> queue_prio = { 1.0f };
-		queue_create_info.pQueuePriorities = queue_prio.data();
-		queue_create_info.pNext = NULL;
-		queue_create_info.flags = NULL;
-
-		// Device creation information
-		VkDeviceCreateInfo create_info;
-		create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-		create_info.queueCreateInfoCount = 1;
-		create_info.pQueueCreateInfos = &queue_create_info;
-		create_info.ppEnabledLayerNames = layer_names.data();
-		create_info.enabledLayerCount = static_cast<uint32_t>(layer_names.size());
-		create_info.ppEnabledExtensionNames = device_property_names.data();
-		create_info.enabledExtensionCount = static_cast<uint32_t>(device_property_names.size());
-		create_info.pNext = NULL;
-		create_info.pEnabledFeatures = NULL;
-		create_info.flags = NULL;
-
-		// Finally we're ready to create a new device
-		VkResult res = vkCreateDevice(physicalDevice, &create_info, nullptr, &outDevice);
-		if (res != VK_SUCCESS)
-		{
-			std::cout << "failed to create logical device!\n";
-			return false;
-		}
-		return true;
-	}
-
-
-	/**
-	 *  Returns the vulkan device queue associtated with the previously created device
-	 */
-	void getDeviceQueue(VkDevice device, int familyQueueIndex, VkQueue& outGraphicsQueue)
-	{
-		vkGetDeviceQueue(device, familyQueueIndex, 0, &outGraphicsQueue);
-	}
-
-
-	/**
-	 *  Creates the vulkan surface that is rendered to by the device using SDL
-	 */
-	bool createSurface(SDL_Window* window, VkInstance instance, VkPhysicalDevice gpu, uint32_t graphicsFamilyQueueIndex, VkSurfaceKHR& outSurface)
-	{
-		if (!SDL_Vulkan_CreateSurface(window, instance, &outSurface))
-		{
-			std::cout << "Unable to create Vulkan compatible surface using SDL\n";
-			return false;
-		}
-
-		// Make sure the surface is compatible with the queue family and gpu
-		VkBool32 supported = false;
-		vkGetPhysicalDeviceSurfaceSupportKHR(gpu, graphicsFamilyQueueIndex, outSurface, &supported);
-		if (!supported)
-		{
-			std::cout << "Surface is not supported by physical device!\n";
-			return false;
-		}
-
-		return true;
-	}
-
-
-	/**
-	 * @return if the present modes could be queried and ioMode is set
-	 * @param outMode the mode that is requested, will contain FIFO when requested mode is not available
-	 */
-	bool getPresentationMode(VkSurfaceKHR surface, VkPhysicalDevice device, VkPresentModeKHR& ioMode)
-	{
-		uint32_t mode_count(0);
-		if (vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &mode_count, NULL) != VK_SUCCESS)
-		{
-			std::cout << "unable to query present mode count for physical device\n";
-			return false;
-		}
-
-		std::vector<VkPresentModeKHR> available_modes(mode_count);
-		if (vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &mode_count, available_modes.data()) != VK_SUCCESS)
-		{
-			std::cout << "unable to query the various present modes for physical device\n";
-			return false;
-		}
-
-		for (auto& mode : available_modes)
-		{
-			if (mode == ioMode)
-				return true;
-		}
-		std::cout << "unable to obtain preferred display mode, fallback to FIFO\n";
-		ioMode = VK_PRESENT_MODE_FIFO_KHR;
-		return true;
-	}
-
-
-	/**
-	 * Obtain the surface properties that are required for the creation of the swap chain
-	 */
-	bool getSurfaceProperties(VkPhysicalDevice device, VkSurfaceKHR surface, VkSurfaceCapabilitiesKHR& capabilities)
-	{
-		if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &capabilities) != VK_SUCCESS)
-		{
-			std::cout << "unable to acquire surface capabilities\n";
-			return false;
-		}
-		return true;
-	}
-
-
-	/**
-	 * Figure out the number of images that are used by the swapchain and
-	 * available to us in the application, based on the minimum amount of necessary images
-	 * provided by the capabilities struct.
-	 */
-	unsigned int getNumberOfSwapImages(const VkSurfaceCapabilitiesKHR& capabilities)
-	{
-		unsigned int number = capabilities.minImageCount + 1;
-		return number > capabilities.maxImageCount ? capabilities.minImageCount : number;
-	}
-
-
-	/**
-	 *  Returns the size of a swapchain image based on the current surface
-	 */
-	VkExtent2D getSwapImageSize(const VkSurfaceCapabilitiesKHR& capabilities)
-	{
-		// Default size = window size
-		VkExtent2D size = { (unsigned int)gWindowWidth, (unsigned int)gWindowHeight };
-
-		// This happens when the window scales based on the size of an image
-		if (capabilities.currentExtent.width == 0xFFFFFFF)
-		{
-			size.width = glm::clamp<unsigned int>(size.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-			size.height = glm::clamp<unsigned int>(size.height, capabilities.maxImageExtent.height, capabilities.maxImageExtent.height);
-		}
-		else
-		{
-			size = capabilities.currentExtent;
-		}
-		return size;
-	}
-
-
-	/**
-	 * Checks if the surface supports color and other required surface bits
-	 * If so constructs a ImageUsageFlags bitmask that is returned in outUsage
-	 * @return if the surface supports all the previously defined bits
-	 */
-	bool getImageUsage(const VkSurfaceCapabilitiesKHR& capabilities, VkImageUsageFlags& outUsage)
-	{
-		const std::vector<VkImageUsageFlags>& desir_usages = getRequestedImageUsages();
-		assert(desir_usages.size() > 0);
-
-		// Needs to be always present
-		outUsage = desir_usages[0];
-
-		for (const auto& desired_usage : desir_usages)
-		{
-			VkImageUsageFlags image_usage = desired_usage & capabilities.supportedUsageFlags;
-			if (image_usage != desired_usage)
-			{
-				std::cout << "unsupported image usage flag: " << desired_usage << "\n";
-				return false;
-			}
-
-			// Add bit if found as supported color
-			outUsage = (outUsage | desired_usage);
-		}
-
-		return true;
-	}
-
-
-	/**
-	 * @return transform based on global declared above, current transform if that transform isn't available
-	 */
-	VkSurfaceTransformFlagBitsKHR getTransform(const VkSurfaceCapabilitiesKHR& capabilities)
-	{
-		if (capabilities.supportedTransforms & gTransform)
-			return gTransform;
-		std::cout << "unsupported surface transform: " << gTransform;
-		return capabilities.currentTransform;
-	}
-
-
-	/**
-	 * @return the most appropriate color space based on the globals provided above
-	 */
-	bool getFormat(VkPhysicalDevice device, VkSurfaceKHR surface, VkSurfaceFormatKHR& outFormat)
-	{
-		unsigned int count(0);
-		if (vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, nullptr) != VK_SUCCESS)
-		{
-			std::cout << "unable to query number of supported surface formats";
-			return false;
-		}
-
-		std::vector<VkSurfaceFormatKHR> found_formats(count);
-		if (vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, found_formats.data()) != VK_SUCCESS)
-		{
-			std::cout << "unable to query all supported surface formats\n";
-			return false;
-		}
-
-		// This means there are no restrictions on the supported format.
-		// Preference would work
-		if (found_formats.size() == 1 && found_formats[0].format == VK_FORMAT_UNDEFINED)
-		{
-			outFormat.format = gFormat;
-			outFormat.colorSpace = gColorSpace;
-			return true;
-		}
-
-		// Otherwise check if both are supported
-		for (const auto& found_format_outer : found_formats)
-		{
-			// Format found
-			if (found_format_outer.format == gFormat)
-			{
-				outFormat.format = found_format_outer.format;
-				for (const auto& found_format_inner : found_formats)
-				{
-					// Color space found
-					if (found_format_inner.colorSpace == gColorSpace)
-					{
-						outFormat.colorSpace = found_format_inner.colorSpace;
-						return true;
-					}
-				}
-
-				// No matching color space, pick first one
-				std::cout << "warning: no matching color space found, picking first available one\n!";
-				outFormat.colorSpace = found_formats[0].colorSpace;
-				return true;
-			}
-		}
-
-		// No matching formats found
-		std::cout << "warning: no matching color format found, picking first available one\n";
-		outFormat = found_formats[0];
-		return true;
-	}
-
-
-	/**
-	 * creates the swap chain using utility functions above to retrieve swap chain properties
-	 * Swap chain is associated with a single window (surface) and allows us to display images to screen
-	 */
-	bool createSwapChain(VkSurfaceKHR surface, VkPhysicalDevice physicalDevice, VkDevice device, VkSwapchainKHR& outSwapChain)
-	{
-		// Get properties of surface, necessary for creation of swap-chain
-		VkSurfaceCapabilitiesKHR surface_properties;
-		if (!getSurfaceProperties(physicalDevice, surface, surface_properties))
-			return false;
-
-		// Get the image presentation mode (synced, immediate etc.)
-		VkPresentModeKHR presentation_mode = gPresentationMode;
-		if (!getPresentationMode(surface, physicalDevice, presentation_mode))
-			return false;
-
-		// Get other swap chain related features
-		unsigned int swap_image_count = getNumberOfSwapImages(surface_properties);
-
-		// Size of the images
-		VkExtent2D swap_image_extent = getSwapImageSize(surface_properties);
-
-		// Get image usage (color etc.)
-		VkImageUsageFlags usage_flags;
-		if (!getImageUsage(surface_properties, usage_flags))
-			return false;
-
-		// Get the transform, falls back on current transform when transform is not supported
-		VkSurfaceTransformFlagBitsKHR transform = getTransform(surface_properties);
-
-		// Get swapchain image format
-		VkSurfaceFormatKHR image_format;
-		if (!getFormat(physicalDevice, surface, image_format))
-			return false;
-
-		// Old swap chain
-		VkSwapchainKHR old_swap_chain = outSwapChain;
-
-		// Populate swapchain creation info
-		VkSwapchainCreateInfoKHR swap_info;
-		swap_info.pNext = nullptr;
-		swap_info.flags = 0;
-		swap_info.surface = surface;
-		swap_info.minImageCount = swap_image_count;
-		swap_info.imageFormat = image_format.format;
-		swap_info.imageColorSpace = image_format.colorSpace;
-		swap_info.imageExtent = swap_image_extent;
-		swap_info.imageArrayLayers = 1;
-		swap_info.imageUsage = usage_flags;
-		swap_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		swap_info.queueFamilyIndexCount = 0;
-		swap_info.pQueueFamilyIndices = nullptr;
-		swap_info.preTransform = transform;
-		swap_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-		swap_info.presentMode = presentation_mode;
-		swap_info.clipped = true;
-		swap_info.oldSwapchain = NULL;
-		swap_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-
-		// Destroy old swap chain
-		if (old_swap_chain != VK_NULL_HANDLE)
-		{
-			vkDestroySwapchainKHR(device, old_swap_chain, nullptr);
-			old_swap_chain = VK_NULL_HANDLE;
-		}
-
-		// Create new one
-		if (vkCreateSwapchainKHR(device, &swap_info, nullptr, &old_swap_chain) != VK_SUCCESS)
-		{
-			std::cout << "unable to create swap chain\n";
-			return false;
-		}
-
-		// Store handle
-		outSwapChain = old_swap_chain;
-		return true;
-	}
-
-
-	/**
-	 *  Returns the handles of all the images in a swap chain, result is stored in outImageHandles
-	 */
-	bool getSwapChainImageHandles(VkDevice device, VkSwapchainKHR chain, std::vector<VkImage>& outImageHandles)
-	{
-		unsigned int image_count(0);
-		VkResult res = vkGetSwapchainImagesKHR(device, chain, &image_count, nullptr);
-		if (res != VK_SUCCESS)
-		{
-			std::cout << "unable to get number of images in swap chain\n";
-			return false;
-		}
-
-		outImageHandles.clear();
-		outImageHandles.resize(image_count);
-		if (vkGetSwapchainImagesKHR(device, chain, &image_count, outImageHandles.data()) != VK_SUCCESS)
-		{
-			std::cout << "unable to get image handles from swap chain\n";
-			return false;
-		}
-		return true;
-	}
-
-	/**
-	 *  Destroys the vulkan instance
-	 */
-	void vulkanQuit(VkInstance instance, VkDevice device, VkDebugReportCallbackEXT callback, VkSwapchainKHR chain)
-	{
-		vkDestroySwapchainKHR(device, chain, nullptr);
-		vkDestroyDevice(device, nullptr);
-		destroyDebugReportCallbackEXT(instance, callback, nullptr);
-		vkDestroyInstance(instance, nullptr);
-		SDL_Quit();
-	}
-
-}
 
 struct engineThreads
 {
@@ -842,6 +71,7 @@ struct engineParameters
 		LTimer physicsTimerMovement;
 		LTimer fpsTimer;
 		LTimer exitLoopTimer;
+		LTimer matchResultTimer;
 		int physicsRate = 20;
 	}GSYS;
 
@@ -858,6 +88,7 @@ struct engineParameters
 		bool isSendThreadActive = false;
 		bool isPhysicsThreadActive = false;
 		bool isReciveThreadActive = false;
+		bool MATCH_RESULT_SCREEN = false;
 
 	}EXECUTE;
 	struct TEMPORAL
@@ -870,6 +101,7 @@ struct engineParameters
 		int damageAmount;
 		int projIdentifier;
 		int matchingType;
+		bool MATCH_RESULT_WON = false;
 
 		stringstream miscSS;
 		stringstream DATAPACKET;
@@ -887,6 +119,9 @@ struct MEMEORY
 		LTexture PAWN_COLLISION_REFERENCE;
 		LTexture MATCHING_BUTTON_CHOICE;
 		LTexture MATCHING_IN_PROGRESS;
+		LTexture MATCH_RESULT_WON;
+		LTexture MATCH_RESULT_LOST;
+
 	}TEXTR;
 	struct FONT
 	{
@@ -900,7 +135,7 @@ struct MEMEORY
 
 }MEM;
 
-				
+
 enum PhysicsType
 {
 	PHYSICS_TYPE_PROJECTILES,
@@ -1023,7 +258,7 @@ void renderTextures();
 bool getPhysicsReady(int type);
 int processPhysics(void* ptr);
 int f_processMisc(void* ptr);
-
+void matchResultScreen();
 
 static int processPhysics(void* ptr)
 {
@@ -1101,70 +336,15 @@ static int processPhysics(void* ptr)
 				}
 			}
 
+
+		//	cout << endl << CLIENT.getHealth();
+
 			//Handle collision
 
 			handleCollision();
 		}
 		SDL_Delay(SDL_GLOBAL_DELAY);
 	}
-}
-
-bool initVulkan()
-{
-	std::vector<std::string> found_extensions;
-	if (!VULKAN::getAvailableVulkanExtensions(gWindow.getWindow(), found_extensions))
-		return -1;
-
-	// Get available vulkan layer extensions, notify when not all could be found
-	std::vector<std::string> found_layers;
-	if (!VULKAN::getAvailableVulkanLayers(found_layers))
-		return -1;
-
-	// Warn when not all requested layers could be found
-	if (found_layers.size() != getRequestedLayerNames().size())
-		std::cout << "warning! not all requested layers could be found!\n";
-
-	// Create Vulkan Instance
-	if (!VULKAN::createVulkanInstance(found_layers, found_extensions, gWindow.getVulkanInstance()))
-		return -1;
-
-	// Vulkan messaging callback
-	VkDebugReportCallbackEXT callback;
-	VULKAN::setupDebugCallback(gWindow.getVulkanInstance(), callback);
-
-	// Select GPU after succsessful creation of a vulkan instance (jeeeej no global states anymore)
-	VkPhysicalDevice gpu;
-	unsigned int graphics_queue_index(-1);
-	if (!VULKAN::selectGPU(gWindow.getVulkanInstance(), gpu, graphics_queue_index))
-		return -1;
-
-	// Create a logical device that interfaces with the physical device
-	VkDevice device;
-	if (!VULKAN::createLogicalDevice(gpu, graphics_queue_index, found_layers, device))
-		return -1;
-
-	// Create the surface we want to render to, associated with the window we created before
-	// This call also checks if the created surface is compatible with the previously selected physical device and associated render queue
-	VkSurfaceKHR presentation_surface;
-	if (!VULKAN::createSurface(gWindow.getWindow(), gWindow.getVulkanInstance(), gpu, graphics_queue_index, presentation_surface))
-		return -1;
-
-	// Create swap chain
-	VkSwapchainKHR swap_chain = NULL;
-	if (!VULKAN::createSwapChain(presentation_surface, gpu, device, swap_chain))
-		return -1;
-
-	// Get image handles from swap chain
-	std::vector<VkImage> chain_images;
-	if (!VULKAN::getSwapChainImageHandles(device, swap_chain, chain_images))
-		return -1;
-
-	// Fetch the queue we want to submit the actual commands to
-	VkQueue graphics_queue;
-	VULKAN::getDeviceQueue(device, graphics_queue_index, graphics_queue);
-
-
-	return true;
 }
 
 bool getPhysicsReady(int type)
@@ -1207,6 +387,36 @@ void resetPlayerData()
 		}
 	}
 }
+void matchResultScreen(bool clientWin)
+{
+	EP.GSYS.matchResultTimer.start();
+
+	while (EP.GSYS.matchResultTimer.getTicks() < 3000 && !EP.EXECUTE.exitCurrentLoop)
+	{
+		while (SDL_PollEvent(&e))
+		{
+			SDL_RenderClear(gWindow.getRenderer());
+			SDL_SetRenderDrawColor(gWindow.getRenderer(), 0xFF, 0xFF, 0xFF, 0xFF);
+
+			background_texture.render(gWindow.getRenderer(), 0, 0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+
+			if (clientWin)
+			{
+				MEM.TEXTR.MATCH_RESULT_WON.render(gWindow.getRenderer(), DEFAULT_RESOLUTION_WIDTH / 2 - MEM.TEXTR.MATCH_RESULT_WON.getWidth(), DEFAULT_RESOLUTION_HEIGHT / 2 - MEM.TEXTR.MATCH_RESULT_WON.getHeight(), NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+			}
+			else
+			{
+				MEM.TEXTR.MATCH_RESULT_LOST.render(gWindow.getRenderer(), DEFAULT_RESOLUTION_WIDTH / 2 - MEM.TEXTR.MATCH_RESULT_LOST.getWidth(), DEFAULT_RESOLUTION_HEIGHT / 2 - MEM.TEXTR.MATCH_RESULT_LOST.getHeight(), NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+			}
+
+			gWindow.render();
+			gWindow.handleEvent(e);
+
+			SDL_Delay(1);
+		}
+	}
+}
+
 
 bool checkCollision(SDL_Rect a, SDL_Rect b)
 {
@@ -1256,7 +466,7 @@ bool checkCollision(SDL_Rect a, SDL_Rect b)
 void handleCollision()
 {
 	//CHEKING FOR PLAYER COLLISION
-	
+
 	for (unsigned int i = 0; i < MAX_PLAYER_ENTITY; i++)
 	{
 		if (Player[i].getIfSlotUsed() && !Player[i].getPlayerDead())
@@ -1278,7 +488,7 @@ void handleCollision()
 		xLast = CLIENT.getPosX();
 		yLast = CLIENT.getPosY();
 	}
-	
+
 	collisionFound = false;
 
 	//CHECKING FOR BULLLET COLLSISION OF OTHER PLAYERS
@@ -1293,7 +503,7 @@ void handleCollision()
 				{
 					for (unsigned int j = 0; j < MAX_PLAYER_BULLET_COUNT; j++)
 					{
-						if (!Player[i].gProjectile[j].getSlotFree() && !ANIM_FIREBALL.getIsInverseSeq(i,j))
+						if (!Player[i].gProjectile[j].getSlotFree() && !ANIM_FIREBALL.getIsInverseSeq(i, j))
 						{
 							for (unsigned int l = 0; l < MAX_PLAYER_BULLET_COUNT; l++)
 							{
@@ -1354,12 +564,12 @@ void handleCollision()
 				{
 					if (checkCollision(Player[i].gProjectile[j].getCollisionRect(), CLIENT.getCollisionRect()))
 					{
-						 CLIENT.damageTarget(Player[i].gProjectile[j].getDMG());
-						
-						 Player[i].gProjectile[j].setSlotFree(true);
-						 ANIM_FIREBALL.setCurrentTickClient(i,j,0);
-						 ANIM_CONTACT_REDEXPLOSION.addNewStaticAnim((Player[i].gProjectile[j].getPosX() + CLIENT.getCollisionRect().x) / 2, (Player[i].gProjectile[j].getPosY() + CLIENT.getCollisionRect().y) / 2, true, false);
- 					}
+						CLIENT.damageTarget(Player[i].gProjectile[j].getDMG());
+
+						Player[i].gProjectile[j].setSlotFree(true);
+						ANIM_FIREBALL.setCurrentTickClient(i, j, 0);
+						ANIM_CONTACT_REDEXPLOSION.addNewStaticAnim((Player[i].gProjectile[j].getPosX() + CLIENT.getCollisionRect().x) / 2, (Player[i].gProjectile[j].getPosY() + CLIENT.getCollisionRect().y) / 2, true, false);
+					}
 				}
 			}
 
@@ -1376,10 +586,9 @@ void handleCollision()
 						CLIENT.gProjectile[j].setSlotFree(true);
 						ANIM_FIREBALL.setCurrentTickClient(j, CLIENT_UNIQUE_ID, 0);
 						ANIM_CONTACT_REDEXPLOSION.addNewStaticAnim((CLIENT.gProjectile[j].getCollisionRect().x + Player[i].getCollisionRect().x) / 2, (CLIENT.gProjectile[j].getCollisionRect().y + Player[i].getCollisionRect().y) / 2, true, false);
-						
 					}
 				}
-			} 
+			}
 
 			//CHECK FOR COLLISION BETWEEN PLAYERS MODEL AND PLAYERS BULLETS
 
@@ -1398,7 +607,7 @@ void handleCollision()
 								Player[j].gProjectile[k].setSlotFree(true);
 								ANIM_FIREBALL.setCurrentTickClient(j, k, 0);
 								ANIM_CONTACT_REDEXPLOSION.addNewStaticAnim((Player[i].getCollisionRect().x + Player[j].gProjectile[k].getCollisionRect().x) / 2, (Player[i].getCollisionRect().y + Player[j].gProjectile[k].getCollisionRect().y) / 2, true, false);
-							} 
+							}
 						}
 					}
 				}
@@ -1407,7 +616,7 @@ void handleCollision()
 	}
 }
 
-int clientSendData(const string &input)
+int clientSendData(const string& input)
 {
 	if (strlen(input.c_str()) < DEFAULT_BUFLEN)
 	{
@@ -1429,28 +638,28 @@ void renderTextures()
 
 	//RENDER GROUND
 
-	texture_brickFloor.render(gWindow.getRenderer(), 0, 0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox,0,0,0,0);
-	texture_brickFloor.render(gWindow.getRenderer(), texture_brickFloor.getWidth(),0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox,0,0,0,0);
-	texture_brickFloor.render(gWindow.getRenderer(), 0 ,texture_brickFloor.getHeight(), NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox,0,0,0,0);
-	texture_brickFloor.render(gWindow.getRenderer(), texture_brickFloor.getWidth(), texture_brickFloor.getHeight(), NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox,0,0,0,0);
-	texture_brickFloor.render(gWindow.getRenderer(), texture_brickFloor.getWidth()*2, 0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox,0,0,0,0);
-	texture_brickFloor.render(gWindow.getRenderer(), texture_brickFloor.getWidth()*2, texture_brickFloor.getHeight(), NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox,0,0,0,0);
+	texture_brickFloor.render(gWindow.getRenderer(), 0, 0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+	texture_brickFloor.render(gWindow.getRenderer(), texture_brickFloor.getWidth(), 0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+	texture_brickFloor.render(gWindow.getRenderer(), 0, texture_brickFloor.getHeight(), NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+	texture_brickFloor.render(gWindow.getRenderer(), texture_brickFloor.getWidth(), texture_brickFloor.getHeight(), NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+	texture_brickFloor.render(gWindow.getRenderer(), texture_brickFloor.getWidth() * 2, 0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+	texture_brickFloor.render(gWindow.getRenderer(), texture_brickFloor.getWidth() * 2, texture_brickFloor.getHeight(), NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 
 	//RENDER CLIENT PLAYER
 
 	if (ANIM_RUNNING_ATTACK.getInUse())
 	{
-		ANIM_RUNNING_ATTACK.renderTexture(gWindow.getRenderer(), CLIENT.getPosX(), CLIENT.getPosY(), 0, 0, CLIENT_UNIQUE_ID,false, flipType, 500,50,EP.EXECUTE.renderCollisionBox,CLIENT.getCollisionRect().w,CLIENT.getCollisionRect().h, CLIENT.getCollisionRect().x, CLIENT.getCollisionRect().y);
+		ANIM_RUNNING_ATTACK.renderTexture(gWindow.getRenderer(), CLIENT.getPosX(), CLIENT.getPosY(), 0, 0, CLIENT_UNIQUE_ID, false, flipType, 500, 50, EP.EXECUTE.renderCollisionBox, CLIENT.getCollisionRect().w, CLIENT.getCollisionRect().h, CLIENT.getCollisionRect().x, CLIENT.getCollisionRect().y);
 		CLIENT.setAnimType("runAttack");
 	}
 	else if (CLIENT.getIfMoving())
 	{
-		ANIM_WALKING.renderTexture(gWindow.getRenderer(), CLIENT.getPosX(), CLIENT.getPosY(), 0, 0, CLIENT_UNIQUE_ID,false, flipType, 500,500,EP.EXECUTE.renderCollisionBox,CLIENT.getCollisionRect().w,CLIENT.getCollisionRect().h, CLIENT.getCollisionRect().x, CLIENT.getCollisionRect().y);
+		ANIM_WALKING.renderTexture(gWindow.getRenderer(), CLIENT.getPosX(), CLIENT.getPosY(), 0, 0, CLIENT_UNIQUE_ID, false, flipType, 500, 500, EP.EXECUTE.renderCollisionBox, CLIENT.getCollisionRect().w, CLIENT.getCollisionRect().h, CLIENT.getCollisionRect().x, CLIENT.getCollisionRect().y);
 		CLIENT.setAnimType("walking");
 	}
 	else
 	{
-		ANIM_IDLE.renderTexture(gWindow.getRenderer(), CLIENT.getPosX(), CLIENT.getPosY(), 0, 0 , CLIENT_UNIQUE_ID,false, flipType, 500,500,EP.EXECUTE.renderCollisionBox,CLIENT.getCollisionRect().w,CLIENT.getCollisionRect().h, CLIENT.getCollisionRect().x, CLIENT.getCollisionRect().y);
+		ANIM_IDLE.renderTexture(gWindow.getRenderer(), CLIENT.getPosX(), CLIENT.getPosY(), 0, 0, CLIENT_UNIQUE_ID, false, flipType, 500, 500, EP.EXECUTE.renderCollisionBox, CLIENT.getCollisionRect().w, CLIENT.getCollisionRect().h, CLIENT.getCollisionRect().x, CLIENT.getCollisionRect().y);
 		CLIENT.setAnimType("idle");
 	}
 
@@ -1484,41 +693,43 @@ void renderTextures()
 
 	for (unsigned int i = 0; i < MAX_PLAYER_ENTITY; i++)
 	{
+		//cout << endl << Player[0].getPlayerDead();
+
 		if (Player[i].getIfSlotUsed() && !Player[i].getPlayerDead())
 		{
 			if (Player[i].getAnimType() == "idle")
 			{
-				ANIM_IDLE.renderTexture(gWindow.getRenderer(), Player[i].getPosX(), Player[i].getPosY(), 0, i, 0,false, Player[i].getFlipType(),500,500, EP.EXECUTE.renderCollisionBox, Player[i].getCollisionRect().w, Player[i].getCollisionRect().h, Player[i].getCollisionRect().x, Player[i].getCollisionRect().y);
+				ANIM_IDLE.renderTexture(gWindow.getRenderer(), Player[i].getPosX(), Player[i].getPosY(), 0, i, 0, false, Player[i].getFlipType(), 500, 500, EP.EXECUTE.renderCollisionBox, Player[i].getCollisionRect().w, Player[i].getCollisionRect().h, Player[i].getCollisionRect().x, Player[i].getCollisionRect().y);
 				ANIM_IDLE.updateAnim(i, 0);
 			}
 			else if (Player[i].getAnimType() == "runAttack")
 			{
-				ANIM_RUNNING_ATTACK.renderTexture(gWindow.getRenderer(), Player[i].getPosX(), Player[i].getPosY(), 0, i, 0,false, Player[i].getFlipType(),500,500, EP.EXECUTE.renderCollisionBox, Player[i].getCollisionRect().w, Player[i].getCollisionRect().h, Player[i].getCollisionRect().x, Player[i].getCollisionRect().y);
+				ANIM_RUNNING_ATTACK.renderTexture(gWindow.getRenderer(), Player[i].getPosX(), Player[i].getPosY(), 0, i, 0, false, Player[i].getFlipType(), 500, 500, EP.EXECUTE.renderCollisionBox, Player[i].getCollisionRect().w, Player[i].getCollisionRect().h, Player[i].getCollisionRect().x, Player[i].getCollisionRect().y);
 				ANIM_RUNNING_ATTACK.updateAnim(i, 0);
 			}
 			else if (Player[i].getAnimType() == "walking")
 			{
-				ANIM_WALKING.renderTexture(gWindow.getRenderer(), Player[i].getPosX(), Player[i].getPosY(), 0, i, 0,false, Player[i].getFlipType(),500,500, EP.EXECUTE.renderCollisionBox, Player[i].getCollisionRect().w, Player[i].getCollisionRect().h, Player[i].getCollisionRect().x, Player[i].getCollisionRect().y);
+				ANIM_WALKING.renderTexture(gWindow.getRenderer(), Player[i].getPosX(), Player[i].getPosY(), 0, i, 0, false, Player[i].getFlipType(), 500, 500, EP.EXECUTE.renderCollisionBox, Player[i].getCollisionRect().w, Player[i].getCollisionRect().h, Player[i].getCollisionRect().x, Player[i].getCollisionRect().y);
 				ANIM_WALKING.updateAnim(i, 0);
 			}
-			
+
 			nickname_text_texture.loadFromRenderedText(Player[i].getNickname(), gColor, gWindow.getRenderer(), gNorthFont);
-			nickname_text_texture.render(gWindow.getRenderer(), (Player[i].getPosX() + 35) - (strlen(Player[i].getNickname().c_str())), Player[i].getPosY(), NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox,0,0,0,0);
+			nickname_text_texture.render(gWindow.getRenderer(), (Player[i].getPosX() + 35) - (strlen(Player[i].getNickname().c_str())), Player[i].getPosY(), NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 		}
 	}
 
 
 	//RENDER EXPOSION COLLISIONS
 
-	ANIM_CONTACT_REDEXPLOSION.renderStaticAnim(gWindow.getRenderer(), EP.EXECUTE.renderCollisionBox,0,0,0,0);
+	ANIM_CONTACT_REDEXPLOSION.renderStaticAnim(gWindow.getRenderer(), EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 
 	//RENDER CROSSHAIR
 
-	crosshair_texture.render(gWindow.getRenderer(), mouseX - crosshair_texture.getWidth() / 2, mouseY - (crosshair_texture.getHeight() / 2) +40,NULL,NULL,NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox,0,0,0,0);
+	crosshair_texture.render(gWindow.getRenderer(), mouseX - crosshair_texture.getWidth() / 2, mouseY - (crosshair_texture.getHeight() / 2) + 40, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 
 	//RENDER FPS COUNTER
-	
-	MEM.TEXTR.fpsText.render(gWindow.getRenderer(),0,0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox,0,0,0,0);
+
+	MEM.TEXTR.fpsText.render(gWindow.getRenderer(), 0, 0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 
 	//Render to window
 
@@ -1600,13 +811,13 @@ bool init()
 
 			typeLine_timer.start();
 
-			user_textbox_button.setPosition(565,300,200,32);
-			pass_textbox_button.setPosition(565,370,200,32);
-			MEM.BTT.TWO_BUTTON.setPosition(350,300,290,80);
-			MEM.BTT.FOUR_BUTTON.setPosition(650,300,290,80);
+			user_textbox_button.setPosition(565, 300, 200, 32);
+			pass_textbox_button.setPosition(565, 370, 200, 32);
+			MEM.BTT.TWO_BUTTON.setPosition(350, 300, 290, 80);
+			MEM.BTT.FOUR_BUTTON.setPosition(650, 300, 290, 80);
 
-			register_button.setPosition(430,430,100,30);
-			login_button.setPosition(760,435,100,30);
+			register_button.setPosition(430, 430, 100, 30);
+			login_button.setPosition(760, 435, 100, 30);
 
 			/*
 
@@ -1660,7 +871,7 @@ bool connectToGameServer()
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 
-	iResult = getaddrinfo("192.168.1.11", DEFAULT_PORT, &hints, &result);
+	iResult = getaddrinfo("192.168.1.6", DEFAULT_PORT, &hints, &result);
 	if (iResult != 0) {
 		cout << endl << "getaddrinfo failed:", iResult;
 		WSACleanup();
@@ -1745,7 +956,16 @@ bool loadMedia()
 		printf("Failed to load login texture!\n");
 		success = false;
 	}
-
+	if (!MEM.TEXTR.MATCH_RESULT_WON.loadFromFile("img/matchingScreen/match_won.png", gWindow.getRenderer()))
+	{
+		printf("Failed to load login texture!\n");
+		success = false;
+	}
+	if (!MEM.TEXTR.MATCH_RESULT_LOST.loadFromFile("img/matchingScreen/match_lost.png", gWindow.getRenderer()))
+	{
+		printf("Failed to load login texture!\n");
+		success = false;
+	}
 	//LOAD ANIMATIONS
 
 	if (!ANIM_RUNNING.loadAnim(gWindow.getRenderer(), "img/mainChar/Running/0_Fallen_Angels_Running_000.png", 11))
@@ -1793,7 +1013,7 @@ bool loadMedia()
 		CLIENT.gProjectile[i].setCollisionRectWH(27, 27);
 	}
 
-	CLIENT.setCollisionOffset(25,20);
+	CLIENT.setCollisionOffset(25, 20);
 	CLIENT.setCollisionRectWH(49, 65);
 	CLIENT.setMCWH(49, 65);
 
@@ -1841,7 +1061,7 @@ bool loadMedia()
 	{
 		SDL_Color textColor = { 5, 255, 1 };
 
-		if (!MEM.TEXTR.fpsText.loadFromRenderedText("FPS", gColor,gWindow.getRenderer(), gNorthFont))
+		if (!MEM.TEXTR.fpsText.loadFromRenderedText("FPS", gColor, gWindow.getRenderer(), gNorthFont))
 		{
 			printf("Failed to render text texture!\n");
 			success = false;
@@ -1900,7 +1120,6 @@ void close()
 	Mix_Quit();
 	IMG_Quit();
 	SDL_Quit();
-
 }
 
 bool loginLoop()
@@ -1909,6 +1128,7 @@ bool loginLoop()
 	closesocket(ConnectSocket);
 
 	EP.EXECUTE.isReciveThreadActive = false;
+
 	EP.EXECUTE.exitCurrentLoop = false;
 	bool quit = false;
 	bool inside = false;
@@ -2067,12 +1287,12 @@ bool loginLoop()
 		SDL_SetRenderDrawColor(gWindow.getRenderer(), 0xFF, 0xFF, 0xFF, 0xFF);
 		SDL_RenderClear(gWindow.getRenderer());
 
-		background_texture.render(gWindow.getRenderer(), 0, 0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox,0,0,0,0);
+		background_texture.render(gWindow.getRenderer(), 0, 0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 
 		user_text_texture.loadFromRenderedText(user_ss.c_str(), gColor, gWindow.getRenderer(), gNorthFont);
 		pass_text_texture.loadFromRenderedText(pStar.c_str(), gColor, gWindow.getRenderer(), gNorthFont);
 
-		loginPage_texture.render(gWindow.getRenderer(), gWindow.getWidth() * 0.5f - loginPage_texture.getWidth() / 2, gWindow.getHeight() * 0.5f - loginPage_texture.getHeight() / 2, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox,0,0,0,0);
+		loginPage_texture.render(gWindow.getRenderer(), gWindow.getWidth() * 0.5f - loginPage_texture.getWidth() / 2, gWindow.getHeight() * 0.5f - loginPage_texture.getHeight() / 2, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 
 		SDL_SetRenderDrawColor(gWindow.getRenderer(), 0, 0, 0, 0xFF);
 
@@ -2101,8 +1321,8 @@ bool loginLoop()
 			}
 		}
 
-		user_text_texture.render(gWindow.getRenderer(), gWindow.getWidth() * scaleX * 0.80f, gWindow.getHeight() * scaleX * 0.80f, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox,0,0,0,0);
-		pass_text_texture.render(gWindow.getRenderer(), gWindow.getWidth() * scaleX * 0.80f, gWindow.getHeight() * scaleX * 0.916f, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox,0,0,0,0);
+		user_text_texture.render(gWindow.getRenderer(), gWindow.getWidth() * scaleX * 0.80f, gWindow.getHeight() * scaleX * 0.80f, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+		pass_text_texture.render(gWindow.getRenderer(), gWindow.getWidth() * scaleX * 0.80f, gWindow.getHeight() * scaleX * 0.916f, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 
 		SDL_SetRenderDrawColor(gWindow.getRenderer(), 0xFF, 0xFF, 0xFF, 0xFF);
 
@@ -2116,9 +1336,9 @@ bool loginLoop()
 				alphaIn = true;
 			}
 			green_textbox_texture.setAlpha(alpha);
-			green_textbox_texture.render(gWindow.getRenderer(), 555, 425, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox,0,0,0,0);
+			green_textbox_texture.render(gWindow.getRenderer(), 555, 425, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 
-			info_text_texture.render(gWindow.getRenderer(), 575, 435, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox,0,0,0,0);
+			info_text_texture.render(gWindow.getRenderer(), 575, 435, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 
 			loggedIn = true;
 
@@ -2134,9 +1354,9 @@ bool loginLoop()
 				alphaIn = true;
 			}
 			red_textbox_texture.setAlpha(alpha);
-			red_textbox_texture.render(gWindow.getRenderer(), 555, 425, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox,0,0,0,0);
+			red_textbox_texture.render(gWindow.getRenderer(), 555, 425, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 
-			info_text_texture.render(gWindow.getRenderer(), 575, 435, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox,0,0,0,0);
+			info_text_texture.render(gWindow.getRenderer(), 575, 435, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 		}
 
 		gWindow.render();
@@ -2164,51 +1384,6 @@ bool loginLoop()
 	return false;
 }
 
-bool vulkanTest()
-{
-	while (true)
-	{
-		while (SDL_PollEvent(&e))
-		{
-			if (e.type == SDL_KEYDOWN)
-			{
-
-			}
-			else if (e.type == SDL_TEXTINPUT)
-			{
-
-			}
-
-			else if (e.type == SDL_MOUSEBUTTONDOWN)
-			{
-	
-			}
-
-			else if (e.type == SDL_QUIT)
-			{
-				return false;
-			}
-
-		}
-
-		gWindow.handleEvent(e);
-		SDL_SetRenderDrawColor(gWindow.getRenderer(), 0xFF, 0xFF, 0xFF, 0xFF);
-		SDL_RenderClear(gWindow.getRenderer());
-
-		//texture_brickFloor.render(gWindow.getRenderer(), 0, 0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
-	
-	//	VULKAN::createSurface(gWindow.getWindow(),instance)
-
-
-		SDL_SetRenderDrawColor(gWindow.getRenderer(), 0, 0, 0, 0xFF);
-		gWindow.render();
-
-	}
-
-	return true;
-}
-
-
 string getData(int len, char* data)
 {
 	string sdata(data);
@@ -2234,7 +1409,7 @@ int oldSql(void* ptr)
 
 int v1, v2;
 
-string getFinalData(const string & data)
+string getFinalData(const string& data)
 {
 	v2 = v1;
 	v1 = data.find(',', v2 + 1);
@@ -2245,7 +1420,7 @@ int recivePacket(void* ptr)
 {
 	char sendbuf[DEFAULT_BUFLEN];
 	char recvbuff[DEFAULT_BUFLEN];
-	
+
 	string posX[MAX_PLAYER_ENTITY], posY[MAX_PLAYER_ENTITY], ID[MAX_PLAYER_ENTITY], nickname[MAX_PLAYER_ENTITY], count, rFlipType[MAX_PLAYER_ENTITY], animType[MAX_PLAYER_ENTITY];
 	string posX2, posY2, id;
 	bool exists = false;
@@ -2267,6 +1442,8 @@ int recivePacket(void* ptr)
 			data = getData(iResult, recvbuff);
 			v1 = data.find(',');
 			identifier = atoi(data.substr(0, v1).c_str());
+
+		//	cout << endl << data;
 
 			if (identifier == GET_DATA_ABOUT_PLAYER)
 			{
@@ -2319,7 +1496,6 @@ int recivePacket(void* ptr)
 			}
 			else if (identifier == NEW_PLAYER)
 			{
-				/*
 				ID[0] = getFinalData(data);
 				nickname[0] = getFinalData(data);
 
@@ -2330,15 +1506,15 @@ int recivePacket(void* ptr)
 						if (!Player[j].getIfSlotUsed())
 						{
 							cout << endl << "NEW PLAYER ON ID:" << j;
-							Player[j].fotUsed(true);
+							Player[j].setIfSlotUsed(true);
 							Player[j].setPlayerID(ID[0]);
 							Player[j].setNickname(nickname[0]);
-
+							Player[j].setPlayerDead(false);
 							break;
 						}
 					}
 				}
-				*/
+				
 			}
 			else if (identifier == DAMAGE_PLAYER)
 			{
@@ -2388,7 +1564,8 @@ int recivePacket(void* ptr)
 								Player[j].setIfSlotUsed(true);
 								Player[j].setPlayerID(ID[i]);
 								Player[j].setNickname(nickname[i]);
-								cout << endl << "NEW PLAYER ON ID:" << j << " MAX:" << mTypePC;
+								Player[j].setPlayerDead(false);
+								//cout << endl << "NEW PLAYER ON ID:" << j << " MAX:" << mTypePC;
 
 								break;
 							}
@@ -2435,13 +1612,15 @@ int recivePacket(void* ptr)
 
 				if (ID[0] == gServer.getClientID())
 				{
-					cout << endl << "WON MATCH :";
+					EP.EXECUTE.MATCH_RESULT_SCREEN = true;
+					EP.TEMP.MATCH_RESULT_WON = true;
 					resetPlayerData();
 					tryLoopExit();
 				}
 				else
 				{
-					cout << endl << "LOST MATCH, WINNER ID:" << ID[0];
+					EP.EXECUTE.MATCH_RESULT_SCREEN = true;
+					EP.TEMP.MATCH_RESULT_WON = false;
 					resetPlayerData();
 					tryLoopExit();
 				}
@@ -2540,7 +1719,7 @@ bool matchingLoop()
 				mouseX = e.motion.x;
 				mouseY = e.motion.y;
 			}
-			else if(e.type == SDL_MOUSEBUTTONDOWN)
+			else if (e.type == SDL_MOUSEBUTTONDOWN)
 			{
 				//cout << endl << mouseX << " " << mouseY;
 				if (!EP.EXECUTE.isMatching)
@@ -2555,7 +1734,7 @@ bool matchingLoop()
 						cout << endl << "SENDING:" << EP.TEMP.DATAPACKET.str();
 
 						clientSendData(EP.TEMP.DATAPACKET.str());
-						
+
 					}
 					else if (MEM.BTT.FOUR_BUTTON.handleClick(e))
 					{
@@ -2612,7 +1791,7 @@ bool playLoop()
 	int xLast = 0, yLast = 0;
 
 	bool collisionFound = false;
-	
+
 	fireball_attack_timer.start();
 
 	SDL_ShowCursor(false);
@@ -2705,6 +1884,12 @@ bool playLoop()
 
 		renderTextures();
 
+		if (EP.EXECUTE.MATCH_RESULT_SCREEN)
+		{
+			matchResultScreen(EP.TEMP.MATCH_RESULT_WON);
+			EP.EXECUTE.MATCH_RESULT_SCREEN = false;
+		}
+
 		SDL_Delay(FPS_LIMIT_DELAY);
 	}
 
@@ -2729,7 +1914,7 @@ bool playLoop()
 int main(int argc, char* args[])
 {
 	if (!init())
-	{	
+	{
 		printf("Failed to initialize!\n");
 	}
 	else
@@ -2740,9 +1925,7 @@ int main(int argc, char* args[])
 		}
 		else
 		{
-			srand(time(NULL)); 
-
-			/*
+			srand(time(NULL));
 
 			THREAD.recvThread = SDL_CreateThread(recivePacket, "SendPacket", (void*)NULL);
 			THREAD.SEND_DATA = SDL_CreateThread(sendPacket, "SendPacket", (void*)NULL);
@@ -2758,16 +1941,11 @@ int main(int argc, char* args[])
 
 					while (playLoop())
 					{
-						
+
 					}
 
 				}
 			}
-			*/
-
-			initVulkan();
-
-			vulkanTest();
 		}
 	}
 	close();

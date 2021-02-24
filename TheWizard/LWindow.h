@@ -2,14 +2,12 @@
 
 #include <SDL.h>
 #include <iostream>
-#include <vulkan/vulkan.h>
 
 class LWindow
 {
 public:
 	//Intializes internals
 	LWindow(int, int);
-	~LWindow();
 
 	//Creates window
 	bool init();
@@ -40,12 +38,8 @@ public:
 	bool isShown();
 
 	SDL_Renderer* getRenderer();
-	
+
 	void setFullscreen(bool);
-
-	SDL_Window* getWindow();
-
-	VkInstance &getVulkanInstance();
 
 private:
 	//Window data
@@ -63,6 +57,4 @@ private:
 	bool mFullScreen;
 	bool mMinimized;
 	bool mShown;
-	
-	VkInstance vInstance;
 };
