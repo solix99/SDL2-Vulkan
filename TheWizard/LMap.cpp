@@ -1,6 +1,6 @@
 #include "LMap.h"
 
-LMap::LMap()
+LMap::LMap(SDL_Point mapSize, SDL_Point screenResolution)
 {
 
 }

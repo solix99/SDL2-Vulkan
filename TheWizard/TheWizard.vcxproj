@@ -160,6 +160,7 @@
   <ItemGroup>
     <ClCompile Include="LAnim.cpp" />
     <ClCompile Include="Lbutton.cpp" />
+    <ClCompile Include="LMap.cpp" />
     <ClCompile Include="LPawn.cpp" />
     <ClCompile Include="LProjectile.cpp" />
     <ClCompile Include="LServer.cpp" />
@@ -171,6 +172,7 @@
   <ItemGroup>
     <ClInclude Include="LAnim.h" />
     <ClInclude Include="Lbutton.h" />
+    <ClInclude Include="LMap.h" />
     <ClInclude Include="LPawn.h" />
     <ClInclude Include="LProjectile.h" />
     <ClInclude Include="LServer.h" />
