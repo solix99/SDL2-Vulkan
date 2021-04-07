@@ -389,6 +389,8 @@ void resetPlayerData()
 }
 void matchResultScreen(bool clientWin)
 {
+	cout << endl << "TRIGGERED";
+
 	EP.GSYS.matchResultTimer.start();
 
 	while (EP.GSYS.matchResultTimer.getTicks() < 3000 && !EP.EXECUTE.exitCurrentLoop)
@@ -409,12 +411,14 @@ void matchResultScreen(bool clientWin)
 				MEM.TEXTR.MATCH_RESULT_LOST.render(gWindow.getRenderer(), DEFAULT_RESOLUTION_WIDTH / 2 - MEM.TEXTR.MATCH_RESULT_LOST.getWidth(), DEFAULT_RESOLUTION_HEIGHT / 2 - MEM.TEXTR.MATCH_RESULT_LOST.getHeight(), NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 			}
 
-			gWindow.render();
 			gWindow.handleEvent(e);
-
-			SDL_Delay(1);
 		}
+
+		SDL_Delay(1);
+		gWindow.render();
 	}
+
+	tryLoopExit();
 }
 
 
@@ -871,7 +875,7 @@ bool connectToGameServer()
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 
-	iResult = getaddrinfo("192.168.1.6", DEFAULT_PORT, &hints, &result);
+	iResult = getaddrinfo("192.168.1.18", DEFAULT_PORT, &hints, &result);
 	if (iResult != 0) {
 		cout << endl << "getaddrinfo failed:", iResult;
 		WSACleanup();
@@ -1488,7 +1492,7 @@ int recivePacket(void* ptr)
 					if (Player[i].getIfSlotUsed() && !Player[i].getPlayerDead() && (Player[i].getPlayerID() == ID))
 					{
 						Player[i].setIfSlotUsed(false);
-						cout << endl << "REMOVED PLAYER WITH ID " << ID;
+						//cout << endl << "REMOVED PLAYER WITH ID " << ID;
 
 						break;
 					}
@@ -1505,7 +1509,7 @@ int recivePacket(void* ptr)
 					{
 						if (!Player[j].getIfSlotUsed())
 						{
-							cout << endl << "NEW PLAYER ON ID:" << j;
+							//cout << endl << "NEW PLAYER ON ID:" << j;
 							Player[j].setIfSlotUsed(true);
 							Player[j].setPlayerID(ID[0]);
 							Player[j].setNickname(nickname[0]);
@@ -1521,7 +1525,12 @@ int recivePacket(void* ptr)
 				ID[0] = getFinalData(data); // dmg giver
 				ID[1] = getFinalData(data); // dmg taker
 				EP.TEMP.damageAmount = atoi(getFinalData(data).c_str());
-				EP.TEMP.projIdentifier = atoi(getFinalData(data).c_str());
+
+				if (ID[1] == gServer.getClientID())
+				{
+					CLIENT.damageTarget(EP.TEMP.damageAmount);
+					break;
+				}
 
 				for (unsigned int i = 0; i < MAX_PLAYER_ENTITY; i++)
 				{
@@ -1529,22 +1538,23 @@ int recivePacket(void* ptr)
 					{
 						Player[i].damageTarget(EP.TEMP.damageAmount);
 
-						if (EP.TEMP.projIdentifier == PROJ_KILLSHOT)
-						{
-							Player[i].setPlayerDead(true);
-						}
 						break;
 					}
 				}
+
+				/*
 
 				for (unsigned int i = 0; i < MAX_PLAYER_ENTITY; i++)
 				{
 					if (Player[i].getIfSlotUsed() && !Player[i].getPlayerDead())
 					{
-						cout << endl << Player[i].getHealth();
+						cout << endl <<"ENEMY HP:"<< Player[i].getHealth();
 					}
 				}
 
+				//cout << endl << "CLIENT HP:" << CLIENT.getHealth();
+
+				*/
 			}
 			else if (identifier == MATCHING_COMPLETE)
 			{
@@ -1608,22 +1618,15 @@ int recivePacket(void* ptr)
 			}
 			else if (identifier == MATCH_RESULT)
 			{
+				cout << endl << "got result";
+
 				ID[0] = getFinalData(data);
 
-				if (ID[0] == gServer.getClientID())
-				{
-					EP.EXECUTE.MATCH_RESULT_SCREEN = true;
-					EP.TEMP.MATCH_RESULT_WON = true;
-					resetPlayerData();
-					tryLoopExit();
-				}
-				else
-				{
-					EP.EXECUTE.MATCH_RESULT_SCREEN = true;
-					EP.TEMP.MATCH_RESULT_WON = false;
-					resetPlayerData();
-					tryLoopExit();
-				}
+				EP.TEMP.MATCH_RESULT_WON = ID[0] == gServer.getClientID() ? true : false;
+
+				EP.EXECUTE.MATCH_RESULT_SCREEN = true;
+				resetPlayerData();
+
 			}
 			else if (identifier == SET_POSITION)
 			{
@@ -1644,7 +1647,7 @@ int recivePacket(void* ptr)
 					{
 						Player[i].setPlayerDead(true);
 
-						cout << endl << id[0] << " killed " << ID[1];
+						//cout << endl << id[0] << " killed " << ID[1];
 
 						break;
 					}
@@ -1652,6 +1655,8 @@ int recivePacket(void* ptr)
 			}
 		}
 	}
+
+	return 0;
 }
 
 void computeFPS()
@@ -1908,7 +1913,6 @@ bool playLoop()
 
 	return false;
 }
-
 //OTHER GAMES BREAK WHEN AN ONGOING GAME IS TERMINATED
 
 int main(int argc, char* args[])
