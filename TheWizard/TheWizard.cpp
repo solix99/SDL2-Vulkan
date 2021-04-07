@@ -27,6 +27,7 @@
 #include "mysql.h"
 #include "LAnim.h"
 #include <SDL_thread.h>
+#include "LMap.h"
 
 WSADATA wData;
 #pragma comment(lib, "Ws2_32.lib")
@@ -40,8 +41,8 @@ WSADATA wData;
 
 using namespace std;
 
-#define DEFAULT_RESOLUTION_WIDTH 1280
-#define DEFAULT_RESOLUTION_HEIGHT 720	
+#define DEFAULT_RESOLUTION_WIDTH 1920
+#define DEFAULT_RESOLUTION_HEIGHT 1080	
 
 struct engineThreads
 {
@@ -121,6 +122,7 @@ struct MEMEORY
 		LTexture MATCHING_IN_PROGRESS;
 		LTexture MATCH_RESULT_WON;
 		LTexture MATCH_RESULT_LOST;
+		LTexture TEST_MAP_BACKGROUND;
 
 	}TEXTR;
 	struct FONT
@@ -132,7 +134,10 @@ struct MEMEORY
 		LButton TWO_BUTTON;
 		LButton FOUR_BUTTON;
 	}BTT;
-
+	struct MAPS
+	{
+		LMap BRICK_WORLD;
+	}MAP;
 }MEM;
 
 
@@ -170,6 +175,7 @@ enum MATCHING_TYPE
 	FOUR_PLAYER
 };
 
+bool SKIP_CONN = true;
 
 int iResult;
 struct addrinfo* result = NULL, * ptr = NULL, hints;
@@ -335,7 +341,6 @@ static int processPhysics(void* ptr)
 					}
 				}
 			}
-
 
 		//	cout << endl << CLIENT.getHealth();
 
@@ -642,12 +647,9 @@ void renderTextures()
 
 	//RENDER GROUND
 
-	texture_brickFloor.render(gWindow.getRenderer(), 0, 0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
-	texture_brickFloor.render(gWindow.getRenderer(), texture_brickFloor.getWidth(), 0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
-	texture_brickFloor.render(gWindow.getRenderer(), 0, texture_brickFloor.getHeight(), NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
-	texture_brickFloor.render(gWindow.getRenderer(), texture_brickFloor.getWidth(), texture_brickFloor.getHeight(), NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
-	texture_brickFloor.render(gWindow.getRenderer(), texture_brickFloor.getWidth() * 2, 0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
-	texture_brickFloor.render(gWindow.getRenderer(), texture_brickFloor.getWidth() * 2, texture_brickFloor.getHeight(), NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+
+
+	MEM.TEXTR.TEST_MAP_BACKGROUND.render(gWindow.getRenderer(), 0, 0, NULL, 0, NULL, SDL_FLIP_NONE,false,0,0,0,0);
 
 	//RENDER CLIENT PLAYER
 
@@ -998,7 +1000,21 @@ bool loadMedia()
 		success = false;
 	}
 
+	MEM.TEXTR.TEST_MAP_BACKGROUND.loadTargetTexture(gWindow.getRenderer(), 4000, 4000, texture_brickFloor.getWidth(), texture_brickFloor.getHeight());
 
+	SDL_SetRenderTarget(gWindow.getRenderer(), MEM.TEXTR.TEST_MAP_BACKGROUND.getTexture());
+
+	texture_brickFloor.render(gWindow.getRenderer(), 0, 0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+	texture_brickFloor.render(gWindow.getRenderer(), texture_brickFloor.getWidth(), 0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+	texture_brickFloor.render(gWindow.getRenderer(), 0, texture_brickFloor.getHeight(), NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+	texture_brickFloor.render(gWindow.getRenderer(), texture_brickFloor.getWidth(), texture_brickFloor.getHeight(), NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+	texture_brickFloor.render(gWindow.getRenderer(), texture_brickFloor.getWidth() * 2, 0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+	texture_brickFloor.render(gWindow.getRenderer(), texture_brickFloor.getWidth() * 2, texture_brickFloor.getHeight(), NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+
+	SDL_SetRenderTarget(gWindow.getRenderer(), NULL);
+
+	MEM.MAP.BRICK_WORLD.initMap(gWindow.getRenderer(),4000, 4000, DEFAULT_RESOLUTION_WIDTH, DEFAULT_RESOLUTION_HEIGHT,MEM.TEXTR.TEST_MAP_BACKGROUND);
+	
 	for (unsigned int i = 0; i < MAX_PLAYER_ENTITY; i++)
 	{
 		Player[i].setMCWH(49, 65);
@@ -1931,25 +1947,38 @@ int main(int argc, char* args[])
 		{
 			srand(time(NULL));
 
-			THREAD.recvThread = SDL_CreateThread(recivePacket, "SendPacket", (void*)NULL);
-			THREAD.SEND_DATA = SDL_CreateThread(sendPacket, "SendPacket", (void*)NULL);
 			THREAD.PHYSICS = SDL_CreateThread(processPhysics, "processPhysics", (void*)NULL);
-
-			while (loginLoop())
+			
+			if (SKIP_CONN)
 			{
-				EP.EXECUTE.isReciveThreadActive = true;
-				while (matchingLoop())
+				EP.EXECUTE.isPhysicsThreadActive = true;
+				while (playLoop())
 				{
-					EP.EXECUTE.isSendThreadActive = true;
-					EP.EXECUTE.isPhysicsThreadActive = true;
-
-					while (playLoop())
-					{
-
-					}
 
 				}
 			}
+			else
+			{
+				THREAD.recvThread = SDL_CreateThread(recivePacket, "SendPacket", (void*)NULL);
+				THREAD.SEND_DATA = SDL_CreateThread(sendPacket, "SendPacket", (void*)NULL);
+
+				while (loginLoop())
+				{
+					EP.EXECUTE.isReciveThreadActive = true;
+					while (matchingLoop())
+					{
+						EP.EXECUTE.isSendThreadActive = true;
+						EP.EXECUTE.isPhysicsThreadActive = true;
+
+						while (playLoop())
+						{
+
+						}
+
+					}
+				}
+			}
+
 		}
 	}
 	close();

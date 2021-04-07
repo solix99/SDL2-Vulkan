@@ -21,6 +21,8 @@ public:
 
 	bool loadFromRenderedText(std::string textureText, SDL_Color textColor, SDL_Renderer* gRenderer, TTF_Font* gFont);
 
+	bool loadTargetTexture(SDL_Renderer* gRenderer,int sizeX,int sizeY,int textureSizeW,int textureSizeH);
+
 	void free();
 
 	void setColor(Uint8 red, Uint8 green, Uint8 blue);
@@ -30,6 +32,8 @@ public:
 	void setAlpha(Uint8 alpha);
 
 	void render(SDL_Renderer* gRenderer, int x, int y, SDL_Rect* clip , double angle, SDL_Point * center , SDL_RendererFlip flip,bool renderCollisionBox, int colW, int colH,int colX, int colY);
+
+	SDL_Texture *getTexture();
 
 	int getWidth();
 	int getHeight();

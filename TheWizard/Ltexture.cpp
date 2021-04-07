@@ -22,6 +22,11 @@ void LTexture::free()
 	}
 }
 
+SDL_Texture *LTexture::getTexture()
+{
+	return mTexture;
+}
+
 void LTexture::setColor(Uint8 red, Uint8 green, Uint8 blue)
 {
 	//Modulate texture rgb
@@ -162,4 +167,15 @@ bool LTexture::loadFromFile(std::string path, SDL_Renderer* gRenderer)
 	//Return success
 	mTexture = newTexture;
 	return mTexture != NULL;
+}
+
+
+bool LTexture::loadTargetTexture(SDL_Renderer* gRenderer,int sizeX,int sizeY, int textureSizeW, int textureSizeH)
+{
+	mWidth = 0;
+	mHeight = 0;
+
+	mTexture = SDL_CreateTexture(gRenderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 0, 0);
+	
+	return true;
 }
