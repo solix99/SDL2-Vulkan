@@ -10,10 +10,11 @@ class LMap
 public:
 	LMap();
 
-	void initMap(SDL_Renderer* gRenderer, int logicalX, int logicalY, int resoutionX, int resolutionY,LTexture textureBackground);
+	void initMap(SDL_Renderer* gRenderer, int logicalX, int logicalY, int resoutionX, int resolutionY);
 	SDL_Point getMapSize();
 	SDL_Point getTexturePos(int textureID);
-	void renderMap(SDL_Point playerPos);
+	void renderMap(SDL_Renderer* gRenderer);
+	void setMapBackground(LTexture &pTexture);
 
 private:
 	LTexture MAP_BACKGROUND_;
@@ -23,7 +24,7 @@ private:
 
 	SDL_Point SCREEN_RESOLUTION_;
 	SDL_Point MAP_SIZE_;
-
+	SDL_Rect CLIP_RECT_;
 	SDL_Renderer* gRenderer_;
 
 };

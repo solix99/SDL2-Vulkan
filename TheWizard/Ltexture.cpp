@@ -70,6 +70,18 @@ void LTexture::render(SDL_Renderer* gRenderer, int x, int y, SDL_Rect* clip, dou
 	//Render to screen
 	SDL_RenderCopyEx(gRenderer, mTexture, clip, &renderQuad, angle, center, flip);
 }
+void LTexture::renderSimple(SDL_Renderer* gRenderer, int x, int y)
+{
+	//Set rendering space and render to screen
+	SDL_Rect renderQuad = { x, y, mWidth, mHeight };
+
+	SDL_SetRenderDrawColor(gRenderer, 255, 255, 255, 255);
+	SDL_RenderDrawRect(gRenderer, &collisionBox);
+
+	//Render to screen
+	SDL_RenderCopyEx(gRenderer, mTexture , NULL, &renderQuad, 0,0, SDL_FLIP_NONE);
+}
+
 
 int LTexture::getWidth()
 {
@@ -169,13 +181,21 @@ bool LTexture::loadFromFile(std::string path, SDL_Renderer* gRenderer)
 	return mTexture != NULL;
 }
 
-
-bool LTexture::loadTargetTexture(SDL_Renderer* gRenderer,int sizeX,int sizeY, int textureSizeW, int textureSizeH)
+bool LTexture::setRenderTarget(SDL_Renderer* gRenderer)
 {
-	mWidth = 0;
-	mHeight = 0;
+	SDL_SetRenderTarget(gRenderer, mTexture);
 
-	mTexture = SDL_CreateTexture(gRenderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 0, 0);
-	
 	return true;
+}
+
+bool LTexture::loadTargetTexture(SDL_Renderer* gRenderer,int w,int h)
+{
+	mTexture = SDL_CreateTexture(gRenderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w, h);
+	SDL_SetRenderTarget(gRenderer,mTexture);
+
+	return true;
+}
+void LTexture::setTexture(SDL_Texture* Texture)
+{
+	mTexture = Texture;
 }

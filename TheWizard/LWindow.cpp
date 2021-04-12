@@ -16,9 +16,9 @@ bool LWindow::init()
 	}
 	else
 	{
-		mWindow = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, mWidth, mHeight, SDL_WINDOW_SHOWN);
+		mWindow = SDL_CreateWindow("The Wizard", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, mWidth, mHeight, SDL_WINDOW_SHOWN);
 	}
-
+	
 	if (mWindow != NULL)
 	{
 		mMouseFocus = true;
@@ -42,6 +42,7 @@ bool LWindow::init()
 
 			//Flag as opened
 			mShown = true;
+
 		}
 	}
 	else

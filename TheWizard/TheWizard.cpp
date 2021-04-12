@@ -39,6 +39,7 @@ WSADATA wData;
 #define FPS_LIMIT_DELAY 10
 #define CLIENT_UNIQUE_ID 29
 
+
 using namespace std;
 
 #define DEFAULT_RESOLUTION_WIDTH 1920
@@ -123,6 +124,7 @@ struct MEMEORY
 		LTexture MATCH_RESULT_WON;
 		LTexture MATCH_RESULT_LOST;
 		LTexture TEST_MAP_BACKGROUND;
+		LTexture BRICK_FLOOR;
 
 	}TEXTR;
 	struct FONT
@@ -227,7 +229,7 @@ LTexture info_text_texture;
 LTexture background_texture;
 LTexture crosshair_texture;
 LTexture nickname_text_texture;
-LTexture texture_brickFloor;
+LTexture sTexture;
 
 LAnim ANIM_RUNNING;
 LAnim ANIM_WALKING;
@@ -633,7 +635,7 @@ int clientSendData(const string& input)
 		if (iResult == SOCKET_ERROR) {
 			cout << endl << "send failed:" << WSAGetLastError();
 		}
-		return iResult;
+		return iResult; 
 	}
 }
 
@@ -647,9 +649,11 @@ void renderTextures()
 
 	//RENDER GROUND
 
+	//SDL_Rect abc = {0,0,1920,1080};
 
+//	MEM.TEXTR.TEST_MAP_BACKGROUND.render(gWindow.getRenderer(), 0, 0, &abc, NULL , NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 
-	MEM.TEXTR.TEST_MAP_BACKGROUND.render(gWindow.getRenderer(), 0, 0, NULL, 0, NULL, SDL_FLIP_NONE,false,0,0,0,0);
+	MEM.MAP.BRICK_WORLD.renderMap(gWindow.getRenderer());
 
 	//RENDER CLIENT PLAYER
 
@@ -743,6 +747,22 @@ void renderTextures()
 
 }
 
+void createBigTexture(LTexture &sTexture, LTexture &tTexture,int w, int h)
+{
+	SDL_Rect textureClip = { 0,0,sTexture.getWidth(),sTexture.getHeight() };
+
+	tTexture.loadTargetTexture(gWindow.getRenderer(),w,h);
+
+	for (int i = 0; i <= (int)gWindow.getWidth()/sTexture.getWidth(); i++)
+	{
+		for (int j = 0; j <= (int)gWindow.getHeight() / sTexture.getHeight(); j++)
+		{
+			sTexture.render(gWindow.getRenderer(), i * sTexture.getWidth(), j * sTexture.getHeight(), &textureClip, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+		}
+	}
+	SDL_SetRenderTarget(gWindow.getRenderer(), NULL);
+}
+
 int sendPacket(void* ptr)
 {
 	stringstream fpsSS;
@@ -782,17 +802,17 @@ bool init()
 	int temp;
 	string stemp;
 
-	fstream gameSettings("data/gameSettings.txt", ios::in);
-	//EP.FSTR.gameLog.open("data/gameLog.txt", ios::out | ios::app);
-
-	gameSettings >> stemp >> temp;
-	gWindow.setWidth(temp);
-	gameSettings >> stemp >> temp;
-	gWindow.setHeight(temp);
-	gameSettings >> stemp >> temp;
-	gWindow.setFullscreen(temp);
-
-	gameSettings.close();
+	//fstream gameSettings("data/gameSettings.txt", ios::in);
+	////EP.FSTR.gameLog.open("data/gameLog.txt", ios::out | ios::app);
+	//
+	//gameSettings >> stemp >> temp;
+	//gWindow.setWidth(temp);
+	//gameSettings >> stemp >> temp;
+	//gWindow.setHeight(temp);
+	//gameSettings >> stemp >> temp;
+	//gWindow.setFullscreen(temp);
+	//
+	//gameSettings.close();
 
 	ANIM_RUNNING_ATTACK.setTickTime(366);
 
@@ -947,7 +967,7 @@ bool loadMedia()
 		printf("Failed to load login texture!\n");
 		success = false;
 	}
-	if (!texture_brickFloor.loadFromFile("img/surfaces/floor.png", gWindow.getRenderer()))
+	if (!MEM.TEXTR.BRICK_FLOOR.loadFromFile("img/surfaces/map_test.png", gWindow.getRenderer()))
 	{
 		printf("Failed to load login texture!\n");
 		success = false;
@@ -1000,21 +1020,16 @@ bool loadMedia()
 		success = false;
 	}
 
-	MEM.TEXTR.TEST_MAP_BACKGROUND.loadTargetTexture(gWindow.getRenderer(), 4000, 4000, texture_brickFloor.getWidth(), texture_brickFloor.getHeight());
+	//MAP INIT
 
-	SDL_SetRenderTarget(gWindow.getRenderer(), MEM.TEXTR.TEST_MAP_BACKGROUND.getTexture());
+	MEM.MAP.BRICK_WORLD.initMap(gWindow.getRenderer(), 4000, 4000, gWindow.getWidth(), gWindow.getHeight());
 
-	texture_brickFloor.render(gWindow.getRenderer(), 0, 0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
-	texture_brickFloor.render(gWindow.getRenderer(), texture_brickFloor.getWidth(), 0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
-	texture_brickFloor.render(gWindow.getRenderer(), 0, texture_brickFloor.getHeight(), NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
-	texture_brickFloor.render(gWindow.getRenderer(), texture_brickFloor.getWidth(), texture_brickFloor.getHeight(), NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
-	texture_brickFloor.render(gWindow.getRenderer(), texture_brickFloor.getWidth() * 2, 0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
-	texture_brickFloor.render(gWindow.getRenderer(), texture_brickFloor.getWidth() * 2, texture_brickFloor.getHeight(), NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+	createBigTexture(MEM.TEXTR.BRICK_FLOOR,MEM.TEXTR.TEST_MAP_BACKGROUND, gWindow.getWidth(), gWindow.getHeight());
 
-	SDL_SetRenderTarget(gWindow.getRenderer(), NULL);
+	MEM.MAP.BRICK_WORLD.setMapBackground(MEM.TEXTR.TEST_MAP_BACKGROUND);
 
-	MEM.MAP.BRICK_WORLD.initMap(gWindow.getRenderer(),4000, 4000, DEFAULT_RESOLUTION_WIDTH, DEFAULT_RESOLUTION_HEIGHT,MEM.TEXTR.TEST_MAP_BACKGROUND);
-	
+	//Init stuff
+
 	for (unsigned int i = 0; i < MAX_PLAYER_ENTITY; i++)
 	{
 		Player[i].setMCWH(49, 65);
@@ -1901,7 +1916,7 @@ bool playLoop()
 			}
 		}
 
-		computeFPS();
+		//computeFPS();
 
 		renderTextures();
 
