@@ -199,3 +199,9 @@ void LTexture::setTexture(SDL_Texture* Texture)
 {
 	mTexture = Texture;
 }
+
+void LTexture::setTextureSize(SDL_Point size) 
+{
+	mWidth = size.x;
+	mHeight = size.y;
+}

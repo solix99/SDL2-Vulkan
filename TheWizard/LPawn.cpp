@@ -17,7 +17,7 @@ LPawn::LPawn()
 
 }
 //
-void LPawn::handleEvent(SDL_Event& e)
+void LPawn::handleEvent(SDL_Event& e,SDL_Point mapSize)
 {
 	moving = false;
 	if (currentKeyStates[SDL_SCANCODE_W] && mCollider.y > 1)
@@ -25,7 +25,7 @@ void LPawn::handleEvent(SDL_Event& e)
 		mCollider.y -= DEFAULT_VEL;
 		moving = true;
 	}
-	if (currentKeyStates[SDL_SCANCODE_S] && mCollider.y < 650)
+	if (currentKeyStates[SDL_SCANCODE_S] && mCollider.y < mapSize.x && (mCollider.y + 0 < mapSize.y-100))
 	{
 		mCollider.y += DEFAULT_VEL;
 		moving = true;
@@ -36,7 +36,7 @@ void LPawn::handleEvent(SDL_Event& e)
 		charDir = true;
 		moving = true;
 	}
-	if (currentKeyStates[SDL_SCANCODE_D] && mCollider.y < 1275)
+	if (currentKeyStates[SDL_SCANCODE_D] && mCollider.y < mapSize.y && (mCollider.x + 0 < mapSize.x-100))
 	{
 		mCollider.x += DEFAULT_VEL;
 		charDir = false;
@@ -45,6 +45,19 @@ void LPawn::handleEvent(SDL_Event& e)
 
 	p_collisionRect.x = mCollider.x + xCollisionOffset;
 	p_collisionRect.y = mCollider.y + yCollisionOffset;
+
+
+	if ((mCollider.x < 0) || (mCollider.x + 0 > mapSize.x))
+	{
+		//Move back
+		//mCollider.x -= DEFAULT_VEL;
+	}
+
+	if ((mCollider.y < 0) || (mCollider.y + 0 > mapSize.y))
+	{
+		//Move back
+		//mCollider.y -= DEFAULT_VEL;
+	}
 
 }
 
@@ -310,4 +323,12 @@ void LPawn::resetData()
 	p_health = pDefaultHealth;
 	isDead = true;
 	p_health = 100;
+}
+
+SDL_Point LPawn::getPlayerPoint()
+{
+	playerPoint.x = mCollider.x;
+	playerPoint.y = mCollider.y;
+
+	return playerPoint;
 }

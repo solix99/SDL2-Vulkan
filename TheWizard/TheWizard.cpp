@@ -123,8 +123,9 @@ struct MEMEORY
 		LTexture MATCHING_IN_PROGRESS;
 		LTexture MATCH_RESULT_WON;
 		LTexture MATCH_RESULT_LOST;
-		LTexture TEST_MAP_BACKGROUND;
+		LTexture GRASS_BG;
 		LTexture BRICK_FLOOR;
+
 
 	}TEXTR;
 	struct FONT
@@ -138,7 +139,8 @@ struct MEMEORY
 	}BTT;
 	struct MAPS
 	{
-		LMap BRICK_WORLD;
+		LMap* CURRENT_MAP = new LMap;
+		LMap GRASS_WORLD;
 	}MAP;
 }MEM;
 
@@ -276,7 +278,7 @@ static int processPhysics(void* ptr)
 		{
 			if (getPhysicsReady(PHYSICS_TYPE_PLAYER_MOVEMENT))
 			{
-				CLIENT.handleEvent(e);
+				CLIENT.handleEvent(e,MEM.MAP.CURRENT_MAP->getMapSize());
 
 				if (ANIM_RUNNING_ATTACK.getInUse())
 				{
@@ -649,27 +651,28 @@ void renderTextures()
 
 	//RENDER GROUND
 
-	//SDL_Rect abc = {0,0,1920,1080};
+	MEM.MAP.GRASS_WORLD.renderMap(gWindow.getRenderer(), CLIENT.getPlayerPoint());
 
-//	MEM.TEXTR.TEST_MAP_BACKGROUND.render(gWindow.getRenderer(), 0, 0, &abc, NULL , NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+	int cameraX = CLIENT.getPosX() - MEM.MAP.CURRENT_MAP->getCamera().x;
+	int cameraY = CLIENT.getPosY() - MEM.MAP.CURRENT_MAP->getCamera().y;
 
-	MEM.MAP.BRICK_WORLD.renderMap(gWindow.getRenderer());
+	cout << endl << cameraX;
 
 	//RENDER CLIENT PLAYER
 
 	if (ANIM_RUNNING_ATTACK.getInUse())
 	{
-		ANIM_RUNNING_ATTACK.renderTexture(gWindow.getRenderer(), CLIENT.getPosX(), CLIENT.getPosY(), 0, 0, CLIENT_UNIQUE_ID, false, flipType, 500, 50, EP.EXECUTE.renderCollisionBox, CLIENT.getCollisionRect().w, CLIENT.getCollisionRect().h, CLIENT.getCollisionRect().x, CLIENT.getCollisionRect().y);
+		ANIM_RUNNING_ATTACK.renderTexture(gWindow.getRenderer(), cameraX, cameraY, 0, 0, CLIENT_UNIQUE_ID, false, flipType, 500, 50, EP.EXECUTE.renderCollisionBox, CLIENT.getCollisionRect().w, CLIENT.getCollisionRect().h, CLIENT.getCollisionRect().x, CLIENT.getCollisionRect().y);
 		CLIENT.setAnimType("runAttack");
 	}
 	else if (CLIENT.getIfMoving())
 	{
-		ANIM_WALKING.renderTexture(gWindow.getRenderer(), CLIENT.getPosX(), CLIENT.getPosY(), 0, 0, CLIENT_UNIQUE_ID, false, flipType, 500, 500, EP.EXECUTE.renderCollisionBox, CLIENT.getCollisionRect().w, CLIENT.getCollisionRect().h, CLIENT.getCollisionRect().x, CLIENT.getCollisionRect().y);
+		ANIM_WALKING.renderTexture(gWindow.getRenderer(), cameraX, cameraY, 0, 0, CLIENT_UNIQUE_ID, false, flipType, 500, 500, EP.EXECUTE.renderCollisionBox, CLIENT.getCollisionRect().w, CLIENT.getCollisionRect().h, CLIENT.getCollisionRect().x, CLIENT.getCollisionRect().y);
 		CLIENT.setAnimType("walking");
 	}
 	else
 	{
-		ANIM_IDLE.renderTexture(gWindow.getRenderer(), CLIENT.getPosX(), CLIENT.getPosY(), 0, 0, CLIENT_UNIQUE_ID, false, flipType, 500, 500, EP.EXECUTE.renderCollisionBox, CLIENT.getCollisionRect().w, CLIENT.getCollisionRect().h, CLIENT.getCollisionRect().x, CLIENT.getCollisionRect().y);
+		ANIM_IDLE.renderTexture(gWindow.getRenderer(), cameraX, cameraY, 0, 0, CLIENT_UNIQUE_ID, false, flipType, 500, 500, EP.EXECUTE.renderCollisionBox, CLIENT.getCollisionRect().w, CLIENT.getCollisionRect().h, CLIENT.getCollisionRect().x, CLIENT.getCollisionRect().y);
 		CLIENT.setAnimType("idle");
 	}
 
@@ -703,8 +706,6 @@ void renderTextures()
 
 	for (unsigned int i = 0; i < MAX_PLAYER_ENTITY; i++)
 	{
-		//cout << endl << Player[0].getPlayerDead();
-
 		if (Player[i].getIfSlotUsed() && !Player[i].getPlayerDead())
 		{
 			if (Player[i].getAnimType() == "idle")
@@ -747,20 +748,27 @@ void renderTextures()
 
 }
 
-void createBigTexture(LTexture &sTexture, LTexture &tTexture,int w, int h)
+void createBigTexture(LTexture &sTexture, LTexture &tTexture,int mapSizeX, int mapSizeY)
 {
 	SDL_Rect textureClip = { 0,0,sTexture.getWidth(),sTexture.getHeight() };
 
-	tTexture.loadTargetTexture(gWindow.getRenderer(),w,h);
+	tTexture.loadTargetTexture(gWindow.getRenderer(), mapSizeX, mapSizeY);
 
-	for (int i = 0; i <= (int)gWindow.getWidth()/sTexture.getWidth(); i++)
+	for (int i = 0; i <= (int)mapSizeX /sTexture.getWidth(); i++)
 	{
-		for (int j = 0; j <= (int)gWindow.getHeight() / sTexture.getHeight(); j++)
+		for (int j = 0; j <= (int)mapSizeY / sTexture.getHeight(); j++)
 		{
 			sTexture.render(gWindow.getRenderer(), i * sTexture.getWidth(), j * sTexture.getHeight(), &textureClip, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 		}
 	}
 	SDL_SetRenderTarget(gWindow.getRenderer(), NULL);
+
+	SDL_Point tSize;
+
+	SDL_QueryTexture(tTexture.getTexture(), NULL, NULL, &tSize.x, &tSize.y);
+
+	tTexture.setTextureSize(tSize);
+
 }
 
 int sendPacket(void* ptr)
@@ -992,6 +1000,12 @@ bool loadMedia()
 		printf("Failed to load login texture!\n");
 		success = false;
 	}
+	if (!MEM.TEXTR.GRASS_BG.loadFromFile("img/surfaces/grass_bg4.png", gWindow.getRenderer()))
+	{
+		printf("Failed to load login texture!\n");
+		success = false;
+	}
+
 	//LOAD ANIMATIONS
 
 	if (!ANIM_RUNNING.loadAnim(gWindow.getRenderer(), "img/mainChar/Running/0_Fallen_Angels_Running_000.png", 11))
@@ -1022,11 +1036,13 @@ bool loadMedia()
 
 	//MAP INIT
 
-	MEM.MAP.BRICK_WORLD.initMap(gWindow.getRenderer(), 4000, 4000, gWindow.getWidth(), gWindow.getHeight());
+	//GRASS WORLD
 
-	createBigTexture(MEM.TEXTR.BRICK_FLOOR,MEM.TEXTR.TEST_MAP_BACKGROUND, gWindow.getWidth(), gWindow.getHeight());
+	MEM.MAP.GRASS_WORLD.initMap(gWindow.getRenderer(), 4000, 4000, gWindow.getWidth(), gWindow.getHeight(), MEM.TEXTR.PAWN_COLLISION_REFERENCE.getWidth(), MEM.TEXTR.PAWN_COLLISION_REFERENCE.getHeight());
 
-	MEM.MAP.BRICK_WORLD.setMapBackground(MEM.TEXTR.TEST_MAP_BACKGROUND);
+	createBigTexture(MEM.TEXTR.GRASS_BG, *MEM.MAP.GRASS_WORLD.getBackgroundTexture(), MEM.MAP.GRASS_WORLD.getMapSize().x, MEM.MAP.GRASS_WORLD.getMapSize().y);
+
+	MEM.MAP.GRASS_WORLD.setMapBackground(*MEM.MAP.GRASS_WORLD.getBackgroundTexture());
 
 	//Init stuff
 
@@ -1835,6 +1851,8 @@ bool playLoop()
 	EP.GSYS.physicsTimer.start();
 	EP.GSYS.physicsTimerMovement.start();
 	EP.GSYS.fpsTimer.start();
+
+	MEM.MAP.CURRENT_MAP = &MEM.MAP.GRASS_WORLD;
 
 	while (EP.EXECUTE.exitCurrentLoop == false)
 	{

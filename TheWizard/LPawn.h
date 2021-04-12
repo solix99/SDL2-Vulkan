@@ -12,7 +12,7 @@ public:
 	void setPosX(int);
 	void setPosY(int);
 	void setMCWH(int, int);
-	void handleEvent(SDL_Event& e);
+	void handleEvent(SDL_Event& e, SDL_Point mapSize);
 	void setTexture(LTexture& gTexture);
 	void setCharDIR(bool);
 	LTexture getTexture();
@@ -56,6 +56,8 @@ public:
 	bool getPlayerDead();
 	void resetData();
 
+	SDL_Point getPlayerPoint();
+
 	LProjectile gProjectile[30];
 
 	SDL_RendererFlip flipType;
@@ -70,12 +72,13 @@ private:
 	bool projectileActive;
 	bool slotUsed;
 	bool isDead;
-	
-	int DEFAULT_VEL = 5;
+
+	int DEFAULT_VEL = 50;
 	int p_collisionAmmount = 10;
 	SDL_Rect p_collisionRect;
 	SDL_Rect mCollider;
-	
+	SDL_Point playerPoint;
+
 	int mPosX, mPosY;
 	
 	float mVelX, mVelY;

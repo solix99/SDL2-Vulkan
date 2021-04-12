@@ -39,6 +39,8 @@ public:
 
 	void setTexture(SDL_Texture* Texture);
 
+	void setTextureSize(SDL_Point size);
+
 	SDL_Texture *getTexture();
 
 	int getWidth();
