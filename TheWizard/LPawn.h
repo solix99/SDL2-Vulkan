@@ -34,7 +34,7 @@ public:
 	bool getIfMoving();
 	bool getProjectileActive();
 	void setIfSlotUsed(bool);
-	void spawnProjectile(int, int, int, int, int,float projSpeed);
+	void spawnProjectile(int x, int y, int ang, int dx, int dy, float projSpeed);
 	void setProjectileActive(bool);
 	void setPlayerID(string);
 	void setNickname(string);

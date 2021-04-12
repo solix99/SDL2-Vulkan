@@ -14,7 +14,7 @@ LProjectile::LProjectile()
 
 	mVelX = 5;
 	mVelY = 5;
-	//
+	
 	slotFree = true;
 }
 SDL_Rect LProjectile::getmCollider()
@@ -38,7 +38,6 @@ float LProjectile::getYCollisionOffset()
 {
 	return yCollisionOffset;
 }
-
 void LProjectile::setPosX(float posX)
 {
 	mPosX = posX;

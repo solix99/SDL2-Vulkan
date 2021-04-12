@@ -656,8 +656,6 @@ void renderTextures()
 	int cameraX = CLIENT.getPosX() - MEM.MAP.CURRENT_MAP->getCamera().x;
 	int cameraY = CLIENT.getPosY() - MEM.MAP.CURRENT_MAP->getCamera().y;
 
-	cout << endl << cameraX;
-
 	//RENDER CLIENT PLAYER
 
 	if (ANIM_RUNNING_ATTACK.getInUse())
@@ -1854,6 +1852,7 @@ bool playLoop()
 
 	MEM.MAP.CURRENT_MAP = &MEM.MAP.GRASS_WORLD;
 
+
 	while (EP.EXECUTE.exitCurrentLoop == false)
 	{
 		while (SDL_PollEvent(&e))
@@ -1890,7 +1889,7 @@ bool playLoop()
 					fireball_attack_timer.reset();
 
 					ANIM_RUNNING_ATTACK.setInUse(true);
-					CLIENT.spawnProjectile(CLIENT.getPosX(), CLIENT.getPosY(), 0, e.button.x, e.button.y, 50.0f);
+					CLIENT.spawnProjectile(CLIENT.getPosX(), CLIENT.getPosY(), 0, e.button.x, e.button.y, 15.0f);
 					CLIENT.setProjectileActive(true);
 
 					EP.EXECUTE.injectProjectile = true;
@@ -1943,6 +1942,8 @@ bool playLoop()
 			matchResultScreen(EP.TEMP.MATCH_RESULT_WON);
 			EP.EXECUTE.MATCH_RESULT_SCREEN = false;
 		}
+
+		//cout << endl << CLIENT.getPosX() << " " << CLIENT.getPosY();
 
 		SDL_Delay(FPS_LIMIT_DELAY);
 	}

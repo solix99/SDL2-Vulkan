@@ -46,19 +46,6 @@ void LPawn::handleEvent(SDL_Event& e,SDL_Point mapSize)
 	p_collisionRect.x = mCollider.x + xCollisionOffset;
 	p_collisionRect.y = mCollider.y + yCollisionOffset;
 
-
-	if ((mCollider.x < 0) || (mCollider.x + 0 > mapSize.x))
-	{
-		//Move back
-		//mCollider.x -= DEFAULT_VEL;
-	}
-
-	if ((mCollider.y < 0) || (mCollider.y + 0 > mapSize.y))
-	{
-		//Move back
-		//mCollider.y -= DEFAULT_VEL;
-	}
-
 }
 
 //void LPawn::move()
@@ -214,8 +201,14 @@ void LPawn::spawnProjectile(int x, int y, int ang, int dx, int dy, float projSpe
 			gProjectile[i].setPosX(x);
 			gProjectile[i].setPosY(y);
 			gProjectile[i].setAngle(90 + (atan2(dy - y, dx - x) * 180 / 3.14f));
-			gProjectile[i].setVelX((dx - x) / projSpeed);
-			gProjectile[i].setVelY((dy - y) / projSpeed);
+
+			int d = sqrt(pow(dx - x, 2) + pow(dy - y, 2));
+
+			mVelX = (projSpeed / d) * (dx - x);
+			mVelY = (projSpeed / d) * (dy - y);
+
+			gProjectile[i].setVelX(mVelX);
+			gProjectile[i].setVelY(mVelY);
 
 			break;
 		}
