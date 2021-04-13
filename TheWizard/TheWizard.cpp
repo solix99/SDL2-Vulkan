@@ -38,16 +38,19 @@ WSADATA wData;
 #define SDL_GLOBAL_DELAY 10
 #define FPS_LIMIT_DELAY 10
 #define CLIENT_UNIQUE_ID 29
-
+#define MAX_MAPS 10
 
 using namespace std;
 
 #define DEFAULT_RESOLUTION_WIDTH 1920
 #define DEFAULT_RESOLUTION_HEIGHT 1080	
 
+#define INITIAL_RESOLUTION_WIDTH 1280
+#define INITIAL_RESOLUTION_HEIGHT 720	
+
 struct engineThreads
 {
-	SDL_Thread* recvThread = NULL;
+	SDL_Thread* RECIVE_DATA = NULL;
 	SDL_Thread* SEND_DATA = NULL;
 	SDL_Thread* PHYSICS = NULL;
 
@@ -56,7 +59,7 @@ struct engineThreads
 
 struct engineParameters
 {
-	struct FSTREAM
+	struct FSfTREAM
 	{
 		fstream gameLog;
 	}FSTR;
@@ -75,6 +78,9 @@ struct engineParameters
 		LTimer exitLoopTimer;
 		LTimer matchResultTimer;
 		int physicsRate = 20;
+		float DEFAULT_PROJ_SPEED = 15.0f;
+		SDL_Rect RESOLUTION_CLIP;
+
 	}GSYS;
 
 	struct BOOLEAN
@@ -104,6 +110,8 @@ struct engineParameters
 		int projIdentifier;
 		int matchingType;
 		bool MATCH_RESULT_WON = false;
+		int CAMERA_X;
+		int CAMERA_Y;
 
 		stringstream miscSS;
 		stringstream DATAPACKET;
@@ -136,6 +144,9 @@ struct MEMEORY
 	{
 		LButton TWO_BUTTON;
 		LButton FOUR_BUTTON;
+		LButton LOGIN;
+		LButton REGISTER;
+
 	}BTT;
 	struct MAPS
 	{
@@ -143,6 +154,13 @@ struct MEMEORY
 		LMap GRASS_WORLD;
 	}MAP;
 }MEM;
+
+struct MAPLIST
+{
+	string MAP_NAME[MAX_MAPS];
+	SDL_Point MAP_SIZE[MAX_MAPS];
+
+}MAPL;
 
 
 enum PhysicsType
@@ -179,7 +197,7 @@ enum MATCHING_TYPE
 	FOUR_PLAYER
 };
 
-bool SKIP_CONN = true;
+bool SKIP_CONN = false;
 
 int iResult;
 struct addrinfo* result = NULL, * ptr = NULL, hints;
@@ -207,7 +225,6 @@ stringstream tempss;
 stringstream connectInfo;
 stringstream duplicateInfo;
 
-SDL_Renderer* gRenderer = NULL;
 Mix_Music* gMusic = NULL;
 Mix_Chunk* bluebullet_sound = NULL;
 TTF_Font* gFont = NULL;
@@ -220,7 +237,7 @@ LWindow gWindow(DEFAULT_RESOLUTION_WIDTH, DEFAULT_RESOLUTION_HEIGHT);
 LPawn CLIENT;
 LPawn Player[MAX_PLAYER_ENTITY];
 
-SDL_Color gColor = { 0,0,0 };
+SDL_Color gColor = { 255,0,0 };
 
 LTexture loginPage_texture;
 LTexture user_text_texture;
@@ -643,34 +660,34 @@ int clientSendData(const string& input)
 
 void renderTextures()
 {
-	flipType = CLIENT.getCharDir() ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
-	CLIENT.setFlipTypeString(sFlipType = flipType == SDL_FLIP_HORIZONTAL ? "horizontal" : "none");
-
 	SDL_RenderClear(gWindow.getRenderer());
 	SDL_SetRenderDrawColor(gWindow.getRenderer(), 0xFF, 0xFF, 0xFF, 0xFF);
 
+	flipType = CLIENT.getCharDir() ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
+	CLIENT.setFlipTypeString(sFlipType = flipType == SDL_FLIP_HORIZONTAL ? "horizontal" : "none");
+
 	//RENDER GROUND
 
-	MEM.MAP.GRASS_WORLD.renderMap(gWindow.getRenderer(), CLIENT.getPlayerPoint());
+   	MEM.MAP.GRASS_WORLD.renderMap(gWindow.getRenderer(), CLIENT.getPlayerPoint());
 
-	int cameraX = CLIENT.getPosX() - MEM.MAP.CURRENT_MAP->getCamera().x;
-	int cameraY = CLIENT.getPosY() - MEM.MAP.CURRENT_MAP->getCamera().y;
+	EP.TEMP.CAMERA_X = CLIENT.getPosX() - MEM.MAP.CURRENT_MAP->getCamera().x;
+	EP.TEMP.CAMERA_Y = CLIENT.getPosY() - MEM.MAP.CURRENT_MAP->getCamera().y;
 
 	//RENDER CLIENT PLAYER
 
 	if (ANIM_RUNNING_ATTACK.getInUse())
 	{
-		ANIM_RUNNING_ATTACK.renderTexture(gWindow.getRenderer(), cameraX, cameraY, 0, 0, CLIENT_UNIQUE_ID, false, flipType, 500, 50, EP.EXECUTE.renderCollisionBox, CLIENT.getCollisionRect().w, CLIENT.getCollisionRect().h, CLIENT.getCollisionRect().x, CLIENT.getCollisionRect().y);
+		ANIM_RUNNING_ATTACK.renderTexture(gWindow.getRenderer(), EP.TEMP.CAMERA_X, EP.TEMP.CAMERA_Y, 0, 0, CLIENT_UNIQUE_ID, false, flipType, 500, 50, EP.EXECUTE.renderCollisionBox, CLIENT.getCollisionRect().w, CLIENT.getCollisionRect().h, CLIENT.getCollisionRect().x, CLIENT.getCollisionRect().y);
 		CLIENT.setAnimType("runAttack");
 	}
 	else if (CLIENT.getIfMoving())
 	{
-		ANIM_WALKING.renderTexture(gWindow.getRenderer(), cameraX, cameraY, 0, 0, CLIENT_UNIQUE_ID, false, flipType, 500, 500, EP.EXECUTE.renderCollisionBox, CLIENT.getCollisionRect().w, CLIENT.getCollisionRect().h, CLIENT.getCollisionRect().x, CLIENT.getCollisionRect().y);
+		ANIM_WALKING.renderTexture(gWindow.getRenderer(), EP.TEMP.CAMERA_X, EP.TEMP.CAMERA_Y, 0, 0, CLIENT_UNIQUE_ID, false, flipType, 500, 500, EP.EXECUTE.renderCollisionBox, CLIENT.getCollisionRect().w, CLIENT.getCollisionRect().h, CLIENT.getCollisionRect().x, CLIENT.getCollisionRect().y);
 		CLIENT.setAnimType("walking");
 	}
 	else
 	{
-		ANIM_IDLE.renderTexture(gWindow.getRenderer(), cameraX, cameraY, 0, 0, CLIENT_UNIQUE_ID, false, flipType, 500, 500, EP.EXECUTE.renderCollisionBox, CLIENT.getCollisionRect().w, CLIENT.getCollisionRect().h, CLIENT.getCollisionRect().x, CLIENT.getCollisionRect().y);
+		ANIM_IDLE.renderTexture(gWindow.getRenderer(), EP.TEMP.CAMERA_X, EP.TEMP.CAMERA_Y, 0, 0, CLIENT_UNIQUE_ID, false, flipType, 500, 500, EP.EXECUTE.renderCollisionBox, CLIENT.getCollisionRect().w, CLIENT.getCollisionRect().h, CLIENT.getCollisionRect().x, CLIENT.getCollisionRect().y);
 		CLIENT.setAnimType("idle");
 	}
 
@@ -682,7 +699,7 @@ void renderTextures()
 		{
 			if (!CLIENT.gProjectile[i].getSlotFree())
 			{
-				ANIM_FIREBALL.renderTexture(gWindow.getRenderer(), CLIENT.gProjectile[i].getPosX(), CLIENT.gProjectile[i].getPosY(), CLIENT.gProjectile[i].getAngle(), i, CLIENT_UNIQUE_ID, false, SDL_FLIP_NONE, EP.ANIM.FIREBALL_RENDERSPEED, 1, EP.EXECUTE.renderCollisionBox, CLIENT.gProjectile[i].getCollisionRect().w, CLIENT.gProjectile[i].getCollisionRect().h, CLIENT.gProjectile[i].getCollisionRect().x, CLIENT.gProjectile[i].getCollisionRect().y);
+				ANIM_FIREBALL.renderTexture(gWindow.getRenderer(), CLIENT.gProjectile[i].getPosX() - MEM.MAP.CURRENT_MAP->getCamera().x, CLIENT.gProjectile[i].getPosY() - MEM.MAP.CURRENT_MAP->getCamera().y, CLIENT.gProjectile[i].getAngle(), i, CLIENT_UNIQUE_ID, false, SDL_FLIP_NONE, EP.ANIM.FIREBALL_RENDERSPEED, 1, EP.EXECUTE.renderCollisionBox, CLIENT.gProjectile[i].getCollisionRect().w, CLIENT.gProjectile[i].getCollisionRect().h, CLIENT.gProjectile[i].getCollisionRect().x, CLIENT.gProjectile[i].getCollisionRect().y);
 			}
 		}
 	}
@@ -694,7 +711,7 @@ void renderTextures()
 			{
 				if (!Player[i].gProjectile[j].getSlotFree())
 				{
-					ANIM_FIREBALL.renderTexture(gWindow.getRenderer(), Player[i].gProjectile[j].getPosX(), Player[i].gProjectile[j].getPosY(), Player[i].gProjectile[j].getAngle(), i, j, false, SDL_FLIP_NONE, EP.ANIM.FIREBALL_RENDERSPEED, 1, EP.EXECUTE.renderCollisionBox, CLIENT.gProjectile[i].getCollisionRect().w, CLIENT.gProjectile[i].getCollisionRect().h, CLIENT.gProjectile[i].getCollisionRect().x, CLIENT.gProjectile[i].getCollisionRect().y);
+					ANIM_FIREBALL.renderTexture(gWindow.getRenderer(), Player[i].gProjectile[j].getPosX() - MEM.MAP.CURRENT_MAP->getCamera().x, Player[i].gProjectile[j].getPosY() - MEM.MAP.CURRENT_MAP->getCamera().y, Player[i].gProjectile[j].getAngle(), i, j, false, SDL_FLIP_NONE, EP.ANIM.FIREBALL_RENDERSPEED, 1, EP.EXECUTE.renderCollisionBox, CLIENT.gProjectile[i].getCollisionRect().w, CLIENT.gProjectile[i].getCollisionRect().h, CLIENT.gProjectile[i].getCollisionRect().x, CLIENT.gProjectile[i].getCollisionRect().y);
 				}
 			}
 		}
@@ -749,6 +766,7 @@ void renderTextures()
 void createBigTexture(LTexture &sTexture, LTexture &tTexture,int mapSizeX, int mapSizeY)
 {
 	SDL_Rect textureClip = { 0,0,sTexture.getWidth(),sTexture.getHeight() };
+	SDL_Point tSize;
 
 	tTexture.loadTargetTexture(gWindow.getRenderer(), mapSizeX, mapSizeY);
 
@@ -761,12 +779,9 @@ void createBigTexture(LTexture &sTexture, LTexture &tTexture,int mapSizeX, int m
 	}
 	SDL_SetRenderTarget(gWindow.getRenderer(), NULL);
 
-	SDL_Point tSize;
-
 	SDL_QueryTexture(tTexture.getTexture(), NULL, NULL, &tSize.x, &tSize.y);
 
 	tTexture.setTextureSize(tSize);
-
 }
 
 int sendPacket(void* ptr)
@@ -903,7 +918,7 @@ bool connectToGameServer()
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 
-	iResult = getaddrinfo("192.168.1.18", DEFAULT_PORT, &hints, &result);
+	iResult = getaddrinfo("192.168.1.34", DEFAULT_PORT, &hints, &result);
 	if (iResult != 0) {
 		cout << endl << "getaddrinfo failed:", iResult;
 		WSACleanup();
@@ -1003,6 +1018,11 @@ bool loadMedia()
 		printf("Failed to load login texture!\n");
 		success = false;
 	}
+
+	//LOAD BUTTONS
+
+	MEM.BTT.LOGIN.init("img/loginButton.png", gWindow.getRenderer(), gWindow.getWidth() / 1.95f, gWindow.getHeight() / 1.80f);
+	MEM.BTT.REGISTER.init("img/registerButton.png", gWindow.getRenderer(), gWindow.getWidth() / 2.45f, gWindow.getHeight() / 1.80f);
 
 	//LOAD ANIMATIONS
 
@@ -1198,6 +1218,8 @@ bool loginLoop()
 	string pStar;
 	string text_info;
 
+	EP.GSYS.RESOLUTION_CLIP  = { 0, 0, gWindow.getWidth(),gWindow.getHeight() };
+
 	while (EP.EXECUTE.exitCurrentLoop == false && loggedIn == false)
 	{
 		while (SDL_PollEvent(&e))
@@ -1268,7 +1290,7 @@ bool loginLoop()
 				{
 					typeLinePos = true;
 				}
-				if (login_button.handleClick(e))
+				if (MEM.BTT.LOGIN.handleClick(e))
 				{
 					if (gServer.attemptLogin(user_ss, pass_ss))
 					{
@@ -1295,7 +1317,7 @@ bool loginLoop()
 					pass_ss = "";
 					pStar = "";
 				}
-				if (register_button.handleClick(e))
+				if (MEM.BTT.REGISTER.handleClick(e))
 				{
 					if (gServer.attemptRegister(user_ss, pass_ss) == 0)
 					{
@@ -1312,7 +1334,6 @@ bool loginLoop()
 					else if (gServer.attemptRegister(user_ss, pass_ss) == 3)
 					{
 						info_text_texture.loadFromRenderedText("User/Pass not allowed.", gColor, gWindow.getRenderer(), gNorthFont);
-
 					}
 
 					attemptFailed = true;
@@ -1329,19 +1350,21 @@ bool loginLoop()
 			{
 				EP.EXECUTE.exitCurrentLoop = true;
 			}
-
 		}
 
 		gWindow.handleEvent(e);
 		SDL_SetRenderDrawColor(gWindow.getRenderer(), 0xFF, 0xFF, 0xFF, 0xFF);
 		SDL_RenderClear(gWindow.getRenderer());
 
-		background_texture.render(gWindow.getRenderer(), 0, 0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+		background_texture.render(gWindow.getRenderer(), 0, 0, &EP.GSYS.RESOLUTION_CLIP, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 
 		user_text_texture.loadFromRenderedText(user_ss.c_str(), gColor, gWindow.getRenderer(), gNorthFont);
 		pass_text_texture.loadFromRenderedText(pStar.c_str(), gColor, gWindow.getRenderer(), gNorthFont);
 
 		loginPage_texture.render(gWindow.getRenderer(), gWindow.getWidth() * 0.5f - loginPage_texture.getWidth() / 2, gWindow.getHeight() * 0.5f - loginPage_texture.getHeight() / 2, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+
+		MEM.BTT.LOGIN.render(gWindow.getRenderer());
+		MEM.BTT.REGISTER.render(gWindow.getRenderer());
 
 		SDL_SetRenderDrawColor(gWindow.getRenderer(), 0, 0, 0, 0xFF);
 
@@ -1354,7 +1377,7 @@ bool loginLoop()
 				{
 					typeLine_timer.reset();
 				}
-				SDL_RenderDrawLine(gWindow.getRenderer(), gWindow.getWidth() * scaleX * 0.80f + typeLineLenght, gWindow.getHeight() * scaleX * 0.80f, gWindow.getWidth() * scaleX * 0.80f + typeLineLenght, gWindow.getHeight() * scaleX * 0.80f + 15);
+				SDL_RenderDrawLine(gWindow.getRenderer(), gWindow.getWidth() / 2.2f + typeLineLenght, gWindow.getHeight() / 2.175f, gWindow.getWidth() / 2.2f + typeLineLenght, gWindow.getHeight() / 2.175f + 15);
 			}
 		}
 		else
@@ -1366,12 +1389,12 @@ bool loginLoop()
 				{
 					typeLine_timer.reset();
 				}
-				SDL_RenderDrawLine(gWindow.getRenderer(), gWindow.getWidth() * scaleX * 0.80f + typeLineLenght, gWindow.getHeight() * scaleX * 0.916f, gWindow.getWidth() * scaleX * 0.80f + typeLineLenght, gWindow.getHeight() * scaleX * 0.916f + 15);
+				SDL_RenderDrawLine(gWindow.getRenderer(), gWindow.getWidth() / 2.2f + typeLineLenght , gWindow.getHeight()/2, gWindow.getWidth()/2.2f  + typeLineLenght, gWindow.getHeight()/2 + 15);
 			}
 		}
 
-		user_text_texture.render(gWindow.getRenderer(), gWindow.getWidth() * scaleX * 0.80f, gWindow.getHeight() * scaleX * 0.80f, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
-		pass_text_texture.render(gWindow.getRenderer(), gWindow.getWidth() * scaleX * 0.80f, gWindow.getHeight() * scaleX * 0.916f, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+		user_text_texture.render(gWindow.getRenderer(), gWindow.getWidth()/2.15f , gWindow.getHeight()/2.15f , NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+		pass_text_texture.render(gWindow.getRenderer(), gWindow.getWidth()/2.15f, gWindow.getHeight()/1.95f , NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 
 		SDL_SetRenderDrawColor(gWindow.getRenderer(), 0xFF, 0xFF, 0xFF, 0xFF);
 
@@ -1537,8 +1560,6 @@ int recivePacket(void* ptr)
 					if (Player[i].getIfSlotUsed() && !Player[i].getPlayerDead() && (Player[i].getPlayerID() == ID))
 					{
 						Player[i].setIfSlotUsed(false);
-						//cout << endl << "REMOVED PLAYER WITH ID " << ID;
-
 						break;
 					}
 				}
@@ -1554,7 +1575,6 @@ int recivePacket(void* ptr)
 					{
 						if (!Player[j].getIfSlotUsed())
 						{
-							//cout << endl << "NEW PLAYER ON ID:" << j;
 							Player[j].setIfSlotUsed(true);
 							Player[j].setPlayerID(ID[0]);
 							Player[j].setNickname(nickname[0]);
@@ -1586,20 +1606,6 @@ int recivePacket(void* ptr)
 						break;
 					}
 				}
-
-				/*
-
-				for (unsigned int i = 0; i < MAX_PLAYER_ENTITY; i++)
-				{
-					if (Player[i].getIfSlotUsed() && !Player[i].getPlayerDead())
-					{
-						cout << endl <<"ENEMY HP:"<< Player[i].getHealth();
-					}
-				}
-
-				//cout << endl << "CLIENT HP:" << CLIENT.getHealth();
-
-				*/
 			}
 			else if (identifier == MATCHING_COMPLETE)
 			{
@@ -1852,7 +1858,6 @@ bool playLoop()
 
 	MEM.MAP.CURRENT_MAP = &MEM.MAP.GRASS_WORLD;
 
-
 	while (EP.EXECUTE.exitCurrentLoop == false)
 	{
 		while (SDL_PollEvent(&e))
@@ -1889,7 +1894,7 @@ bool playLoop()
 					fireball_attack_timer.reset();
 
 					ANIM_RUNNING_ATTACK.setInUse(true);
-					CLIENT.spawnProjectile(CLIENT.getPosX(), CLIENT.getPosY(), 0, e.button.x, e.button.y, 15.0f);
+					CLIENT.spawnProjectile(CLIENT.getPosX(), CLIENT.getPosY(), 0, (e.button.x + MEM.MAP.CURRENT_MAP->getCamera().x), e.button.y + MEM.MAP.CURRENT_MAP->getCamera().y, EP.GSYS.DEFAULT_PROJ_SPEED);
 					CLIENT.setProjectileActive(true);
 
 					EP.EXECUTE.injectProjectile = true;
@@ -1899,7 +1904,6 @@ bool playLoop()
 					EP.TEMP.projectileDX = e.button.x;
 					EP.TEMP.projectileDY = e.button.y;
 				}
-
 			}
 			else if (e.type == SDL_QUIT)
 			{
@@ -1986,6 +1990,7 @@ int main(int argc, char* args[])
 			if (SKIP_CONN)
 			{
 				EP.EXECUTE.isPhysicsThreadActive = true;
+
 				while (playLoop())
 				{
 
@@ -1993,7 +1998,7 @@ int main(int argc, char* args[])
 			}
 			else
 			{
-				THREAD.recvThread = SDL_CreateThread(recivePacket, "SendPacket", (void*)NULL);
+				THREAD.RECIVE_DATA = SDL_CreateThread(recivePacket, "SendPacket", (void*)NULL);
 				THREAD.SEND_DATA = SDL_CreateThread(sendPacket, "SendPacket", (void*)NULL);
 
 				while (loginLoop())
@@ -2012,12 +2017,10 @@ int main(int argc, char* args[])
 					}
 				}
 			}
-
 		}
 	}
 	close();
 
 	return 0;
 }
-
 //end

@@ -10,6 +10,8 @@ class LProjectile
 public:
 	LProjectile();
 
+	int DISTANCE;
+
 	float getPosX();
 	float getPosY();
 	SDL_Rect getmCollider();

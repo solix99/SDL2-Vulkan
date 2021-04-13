@@ -202,10 +202,10 @@ void LPawn::spawnProjectile(int x, int y, int ang, int dx, int dy, float projSpe
 			gProjectile[i].setPosY(y);
 			gProjectile[i].setAngle(90 + (atan2(dy - y, dx - x) * 180 / 3.14f));
 
-			int d = sqrt(pow(dx - x, 2) + pow(dy - y, 2));
+			gProjectile[i].DISTANCE = sqrt(pow(dx - x, 2) + pow(dy - y, 2));
 
-			mVelX = (projSpeed / d) * (dx - x);
-			mVelY = (projSpeed / d) * (dy - y);
+			mVelX = (projSpeed / gProjectile[i].DISTANCE) * (dx - x);
+			mVelY = (projSpeed / gProjectile[i].DISTANCE) * (dy - y);
 
 			gProjectile[i].setVelX(mVelX);
 			gProjectile[i].setVelY(mVelY);

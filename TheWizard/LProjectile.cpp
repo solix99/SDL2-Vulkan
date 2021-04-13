@@ -141,6 +141,7 @@ bool LProjectile::checkStatus()
 	p_collisionRect.x = mCollider.x + xCollisionOffset;
 	p_collisionRect.y = mCollider.y + yCollisionOffset;
 
+
 	return true;
 }
 bool LProjectile::getSlotFree()
