@@ -313,7 +313,6 @@ void LPawn::resetData()
 	slotUsed = false;
 	mCollider.x = 0;
 	mCollider.y = 0;
-	p_health = pDefaultHealth;
 	isDead = true;
 	p_health = 100;
 }

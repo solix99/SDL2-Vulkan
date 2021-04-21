@@ -191,4 +191,11 @@ void LProjectile::setVelY(float y)
 {
 	mVelY = y;
 }
-
+float LProjectile::getProjSpeed()
+{
+	return PROJ_SPEED_;
+}
+void LProjectile::setProjSpeed(float pSpeed)
+{
+	PROJ_SPEED_ = pSpeed;
+}

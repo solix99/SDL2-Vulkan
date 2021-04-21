@@ -40,6 +40,8 @@ public:
 	SDL_Rect getCollisionRect();
 	float getXCollisionOffset();
 	float getYCollisionOffset();
+	float getProjSpeed();
+	void setProjSpeed(float pSpeed);
 
 protected:
 
@@ -54,6 +56,7 @@ private:
 
 	int mDestX, mDestY;
 	float mVelX, mVelY;
+	float PROJ_SPEED_;
 
 	SDL_Rect p_collisionRect;
 	SDL_Rect mCollider;

@@ -42,8 +42,8 @@ WSADATA wData;
 
 using namespace std;
 
-#define DEFAULT_RESOLUTION_WIDTH 1920
-#define DEFAULT_RESOLUTION_HEIGHT 1080	
+#define DEFAULT_RESOLUTION_WIDTH 1280	
+#define DEFAULT_RESOLUTION_HEIGHT 720
 
 #define INITIAL_RESOLUTION_WIDTH 1280
 #define INITIAL_RESOLUTION_HEIGHT 720	
@@ -59,7 +59,7 @@ struct engineThreads
 
 struct engineParameters
 {
-	struct FSfTREAM
+	struct FSTREAM
 	{
 		fstream gameLog;
 	}FSTR;
@@ -146,6 +146,8 @@ struct MEMEORY
 		LButton FOUR_BUTTON;
 		LButton LOGIN;
 		LButton REGISTER;
+		LButton MATCHING_2PLAYER;
+		LButton MATCHING_4PLAYER;
 
 	}BTT;
 	struct MAPS
@@ -405,6 +407,8 @@ void tryLoopExit()
 }
 void resetPlayerData()
 {
+	CLIENT.resetData();
+
 	for (int i = 0; i < MAX_PLAYER_ENTITY; i++)
 	{
 		if (Player[i].getIfSlotUsed())
@@ -417,6 +421,7 @@ void matchResultScreen(bool clientWin)
 {
 	cout << endl << "TRIGGERED";
 
+	EP.EXECUTE.exitCurrentLoop = false;
 	EP.GSYS.matchResultTimer.start();
 
 	while (EP.GSYS.matchResultTimer.getTicks() < 3000 && !EP.EXECUTE.exitCurrentLoop)
@@ -426,15 +431,15 @@ void matchResultScreen(bool clientWin)
 			SDL_RenderClear(gWindow.getRenderer());
 			SDL_SetRenderDrawColor(gWindow.getRenderer(), 0xFF, 0xFF, 0xFF, 0xFF);
 
-			background_texture.render(gWindow.getRenderer(), 0, 0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+			background_texture.render(gWindow.getRenderer(), 0, 0, &EP.GSYS.RESOLUTION_CLIP, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 
 			if (clientWin)
 			{
-				MEM.TEXTR.MATCH_RESULT_WON.render(gWindow.getRenderer(), DEFAULT_RESOLUTION_WIDTH / 2 - MEM.TEXTR.MATCH_RESULT_WON.getWidth(), DEFAULT_RESOLUTION_HEIGHT / 2 - MEM.TEXTR.MATCH_RESULT_WON.getHeight(), NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+				MEM.TEXTR.MATCH_RESULT_WON.render(gWindow.getRenderer(), gWindow.getWidth() / 2 - MEM.TEXTR.MATCH_RESULT_WON.getWidth()/2, gWindow.getHeight() / 2 - MEM.TEXTR.MATCH_RESULT_WON.getHeight()/2, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 			}
 			else
 			{
-				MEM.TEXTR.MATCH_RESULT_LOST.render(gWindow.getRenderer(), DEFAULT_RESOLUTION_WIDTH / 2 - MEM.TEXTR.MATCH_RESULT_LOST.getWidth(), DEFAULT_RESOLUTION_HEIGHT / 2 - MEM.TEXTR.MATCH_RESULT_LOST.getHeight(), NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+				MEM.TEXTR.MATCH_RESULT_LOST.render(gWindow.getRenderer(), gWindow.getWidth() / 2 - MEM.TEXTR.MATCH_RESULT_LOST.getWidth()/2, gWindow.getHeight() / 2 - MEM.TEXTR.MATCH_RESULT_LOST.getHeight()/2, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 			}
 
 			gWindow.handleEvent(e);
@@ -443,7 +448,6 @@ void matchResultScreen(bool clientWin)
 		SDL_Delay(1);
 		gWindow.render();
 	}
-
 	tryLoopExit();
 }
 
@@ -599,6 +603,7 @@ void handleCollision()
 						Player[i].gProjectile[j].setSlotFree(true);
 						ANIM_FIREBALL.setCurrentTickClient(i, j, 0);
 						ANIM_CONTACT_REDEXPLOSION.addNewStaticAnim((Player[i].gProjectile[j].getPosX() + CLIENT.getCollisionRect().x) / 2, (Player[i].gProjectile[j].getPosY() + CLIENT.getCollisionRect().y) / 2, true, false);
+						cout << endl << CLIENT.getHealth();
 					}
 				}
 			}
@@ -723,24 +728,27 @@ void renderTextures()
 	{
 		if (Player[i].getIfSlotUsed() && !Player[i].getPlayerDead())
 		{
+			EP.TEMP.CAMERA_X = Player[i].getPosX() - MEM.MAP.CURRENT_MAP->getCamera().x;
+			EP.TEMP.CAMERA_Y = Player[i].getPosY() - MEM.MAP.CURRENT_MAP->getCamera().y;
+
 			if (Player[i].getAnimType() == "idle")
 			{
-				ANIM_IDLE.renderTexture(gWindow.getRenderer(), Player[i].getPosX(), Player[i].getPosY(), 0, i, 0, false, Player[i].getFlipType(), 500, 500, EP.EXECUTE.renderCollisionBox, Player[i].getCollisionRect().w, Player[i].getCollisionRect().h, Player[i].getCollisionRect().x, Player[i].getCollisionRect().y);
+				ANIM_IDLE.renderTexture(gWindow.getRenderer(), EP.TEMP.CAMERA_X, EP.TEMP.CAMERA_Y, 0, i, 0, false, Player[i].getFlipType(), 500, 500, EP.EXECUTE.renderCollisionBox, Player[i].getCollisionRect().w, Player[i].getCollisionRect().h, Player[i].getCollisionRect().x, Player[i].getCollisionRect().y);
 				ANIM_IDLE.updateAnim(i, 0);
 			}
 			else if (Player[i].getAnimType() == "runAttack")
 			{
-				ANIM_RUNNING_ATTACK.renderTexture(gWindow.getRenderer(), Player[i].getPosX(), Player[i].getPosY(), 0, i, 0, false, Player[i].getFlipType(), 500, 500, EP.EXECUTE.renderCollisionBox, Player[i].getCollisionRect().w, Player[i].getCollisionRect().h, Player[i].getCollisionRect().x, Player[i].getCollisionRect().y);
+				ANIM_RUNNING_ATTACK.renderTexture(gWindow.getRenderer(), EP.TEMP.CAMERA_X, EP.TEMP.CAMERA_Y, 0, i, 0, false, Player[i].getFlipType(), 500, 500, EP.EXECUTE.renderCollisionBox, Player[i].getCollisionRect().w, Player[i].getCollisionRect().h, Player[i].getCollisionRect().x, Player[i].getCollisionRect().y);
 				ANIM_RUNNING_ATTACK.updateAnim(i, 0);
 			}
 			else if (Player[i].getAnimType() == "walking")
 			{
-				ANIM_WALKING.renderTexture(gWindow.getRenderer(), Player[i].getPosX(), Player[i].getPosY(), 0, i, 0, false, Player[i].getFlipType(), 500, 500, EP.EXECUTE.renderCollisionBox, Player[i].getCollisionRect().w, Player[i].getCollisionRect().h, Player[i].getCollisionRect().x, Player[i].getCollisionRect().y);
+				ANIM_WALKING.renderTexture(gWindow.getRenderer(), EP.TEMP.CAMERA_X, EP.TEMP.CAMERA_Y, 0, i, 0, false, Player[i].getFlipType(), 500, 500, EP.EXECUTE.renderCollisionBox, Player[i].getCollisionRect().w, Player[i].getCollisionRect().h, Player[i].getCollisionRect().x, Player[i].getCollisionRect().y);
 				ANIM_WALKING.updateAnim(i, 0);
 			}
 
 			nickname_text_texture.loadFromRenderedText(Player[i].getNickname(), gColor, gWindow.getRenderer(), gNorthFont);
-			nickname_text_texture.render(gWindow.getRenderer(), (Player[i].getPosX() + 35) - (strlen(Player[i].getNickname().c_str())), Player[i].getPosY(), NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+			nickname_text_texture.render(gWindow.getRenderer(), (EP.TEMP.CAMERA_X + 35) - (strlen(Player[i].getNickname().c_str())), EP.TEMP.CAMERA_Y, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 		}
 	}
 
@@ -918,7 +926,7 @@ bool connectToGameServer()
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 
-	iResult = getaddrinfo("192.168.1.34", DEFAULT_PORT, &hints, &result);
+	iResult = getaddrinfo("192.168.1.6", DEFAULT_PORT, &hints, &result);
 	if (iResult != 0) {
 		cout << endl << "getaddrinfo failed:", iResult;
 		WSACleanup();
@@ -993,11 +1001,6 @@ bool loadMedia()
 		printf("Failed to load login texture!\n");
 		success = false;
 	}
-	if (!MEM.TEXTR.MATCHING_BUTTON_CHOICE.loadFromFile("img/matchingScreen/buttonUI.png", gWindow.getRenderer()))
-	{
-		printf("Failed to load login texture!\n");
-		success = false;
-	}
 	if (!MEM.TEXTR.MATCHING_IN_PROGRESS.loadFromFile("img/matchingScreen/matching.png", gWindow.getRenderer()))
 	{
 		printf("Failed to load login texture!\n");
@@ -1023,6 +1026,8 @@ bool loadMedia()
 
 	MEM.BTT.LOGIN.init("img/loginButton.png", gWindow.getRenderer(), gWindow.getWidth() / 1.95f, gWindow.getHeight() / 1.80f);
 	MEM.BTT.REGISTER.init("img/registerButton.png", gWindow.getRenderer(), gWindow.getWidth() / 2.45f, gWindow.getHeight() / 1.80f);
+	MEM.BTT.MATCHING_2PLAYER.init("img/matchingScreen/matching_2player.png", gWindow.getRenderer(), gWindow.getWidth() * 0.34f, gWindow.getHeight() * 0.50f);
+	MEM.BTT.MATCHING_4PLAYER.init("img/matchingScreen/matching_4player.png", gWindow.getRenderer(), gWindow.getWidth() * 0.50f, gWindow.getHeight() * 0.50f);
 
 	//LOAD ANIMATIONS
 
@@ -1074,12 +1079,14 @@ bool loadMedia()
 		{
 			Player[i].gProjectile[j].setMCWH(27, 27);
 			Player[i].gProjectile[j].setCollisionRectWH(27, 27);
+			Player[i].gProjectile[j].setProjSpeed(EP.GSYS.DEFAULT_PROJ_SPEED);
 		}
 	}
 	for (unsigned int i = 0; i < 30; i++)
 	{
 		CLIENT.gProjectile[i].setMCWH(27, 27);
 		CLIENT.gProjectile[i].setCollisionRectWH(27, 27);
+		CLIENT.gProjectile[i].setProjSpeed(EP.GSYS.DEFAULT_PROJ_SPEED);
 	}
 
 	CLIENT.setCollisionOffset(25, 20);
@@ -1393,8 +1400,8 @@ bool loginLoop()
 			}
 		}
 
-		user_text_texture.render(gWindow.getRenderer(), gWindow.getWidth()/2.15f , gWindow.getHeight()/2.15f , NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
-		pass_text_texture.render(gWindow.getRenderer(), gWindow.getWidth()/2.15f, gWindow.getHeight()/1.95f , NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+		user_text_texture.render(gWindow.getRenderer(), gWindow.getWidth()*0.466f , gWindow.getHeight()*0.466f, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+		pass_text_texture.render(gWindow.getRenderer(), gWindow.getWidth()*0.466f, gWindow.getHeight()*0.51f, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 
 		SDL_SetRenderDrawColor(gWindow.getRenderer(), 0xFF, 0xFF, 0xFF, 0xFF);
 
@@ -1652,14 +1659,17 @@ int recivePacket(void* ptr)
 						{
 							if (Player[i].gProjectile[j].getSlotFree())
 							{
+								Player[i].gProjectile[j].DISTANCE = sqrt(pow(atoi(posX2.c_str()) - atoi(posX[0].c_str()), 2) + pow(atoi(posY2.c_str()) - atoi(posY[0].c_str()), 2));
+
 								Player[i].gProjectile[j].setSlotFree(false);
 								Player[i].gProjectile[j].setPosX(atoi(posX[0].c_str()));
 								Player[i].gProjectile[j].setPosY(atoi(posY[0].c_str()));
 								Player[i].gProjectile[j].setDestX(atoi(posX2.c_str()));
 								Player[i].gProjectile[j].setDestY(atoi(posY2.c_str()));
 								Player[i].gProjectile[j].setAngle(90 + (atan2(atoi(posY2.c_str()) - atoi(posY[0].c_str()), atoi(posX2.c_str()) - atoi(posX[0].c_str())) * 180 / 3.14f));
-								Player[i].gProjectile[j].setVelX((atoi(posX2.c_str()) - atoi(posX[0].c_str())) / 50.0f);
-								Player[i].gProjectile[j].setVelY((atoi(posY2.c_str()) - atoi(posY[0].c_str())) / 50.0f);
+								Player[i].gProjectile[j].setVelX((Player[i].gProjectile[j].getProjSpeed() / Player[i].gProjectile[j].DISTANCE) * (atoi(posX2.c_str()) - atoi(posX[0].c_str())));
+								Player[i].gProjectile[j].setVelY((Player[i].gProjectile[j].getProjSpeed() / Player[i].gProjectile[j].DISTANCE) * (atoi(posY2.c_str()) - atoi(posY[0].c_str())));
+
 								break;
 							}
 						}
@@ -1676,8 +1686,8 @@ int recivePacket(void* ptr)
 				EP.TEMP.MATCH_RESULT_WON = ID[0] == gServer.getClientID() ? true : false;
 
 				EP.EXECUTE.MATCH_RESULT_SCREEN = true;
-				resetPlayerData();
 
+				resetPlayerData();
 			}
 			else if (identifier == SET_POSITION)
 			{
@@ -1777,28 +1787,23 @@ bool matchingLoop()
 			}
 			else if (e.type == SDL_MOUSEBUTTONDOWN)
 			{
-				//cout << endl << mouseX << " " << mouseY;
 				if (!EP.EXECUTE.isMatching)
 				{
-					if (MEM.BTT.TWO_BUTTON.handleClick(e))
+					if (MEM.BTT.MATCHING_2PLAYER.handleClick(e))
 					{
 						EP.EXECUTE.isMatching = true;
 						EP.TEMP.matchingType = TWO_PLAYER;
-
 						EP.TEMP.DATAPACKET << EP.TEMP.matchingType << "," << END_OF_PACKET;
-
-						cout << endl << "SENDING:" << EP.TEMP.DATAPACKET.str();
 
 						clientSendData(EP.TEMP.DATAPACKET.str());
 
 					}
-					else if (MEM.BTT.FOUR_BUTTON.handleClick(e))
+					else if (MEM.BTT.MATCHING_4PLAYER.handleClick(e))
 					{
 						EP.EXECUTE.isMatching = true;
 						EP.TEMP.matchingType = FOUR_PLAYER;
-
 						EP.TEMP.DATAPACKET << EP.TEMP.matchingType << "," << END_OF_PACKET;
-
+						
 						clientSendData(EP.TEMP.DATAPACKET.str());
 					}
 				}
@@ -1810,12 +1815,13 @@ bool matchingLoop()
 
 		if (!EP.EXECUTE.isMatching)
 		{
-			background_texture.render(gWindow.getRenderer(), 0, 0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
-			MEM.TEXTR.MATCHING_BUTTON_CHOICE.render(gWindow.getRenderer(), gWindow.getWidth() / 2 - MEM.TEXTR.MATCHING_BUTTON_CHOICE.getWidth() / 2, gWindow.getHeight() / 2 - MEM.TEXTR.MATCHING_BUTTON_CHOICE.getHeight() / 2 - 20, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+			background_texture.render(gWindow.getRenderer(), 0, 0, &EP.GSYS.RESOLUTION_CLIP, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+			MEM.BTT.MATCHING_2PLAYER.render(gWindow.getRenderer());
+			MEM.BTT.MATCHING_4PLAYER.render(gWindow.getRenderer());
 		}
 		else
 		{
-			background_texture.render(gWindow.getRenderer(), 0, 0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+			background_texture.render(gWindow.getRenderer(), 0, 0, &EP.GSYS.RESOLUTION_CLIP, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 			MEM.TEXTR.MATCHING_IN_PROGRESS.render(gWindow.getRenderer(), gWindow.getWidth() / 2 - MEM.TEXTR.MATCHING_IN_PROGRESS.getWidth() / 2, gWindow.getHeight() / 2 - MEM.TEXTR.MATCHING_IN_PROGRESS.getHeight() / 2, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 		}
 
@@ -1944,13 +1950,17 @@ bool playLoop()
 		if (EP.EXECUTE.MATCH_RESULT_SCREEN)
 		{
 			matchResultScreen(EP.TEMP.MATCH_RESULT_WON);
-			EP.EXECUTE.MATCH_RESULT_SCREEN = false;
 		}
-
-		//cout << endl << CLIENT.getPosX() << " " << CLIENT.getPosY();
 
 		SDL_Delay(FPS_LIMIT_DELAY);
 	}
+
+	if (!EP.EXECUTE.MATCH_RESULT_SCREEN)
+	{
+		EP.TEMP.MATCH_RESULT_WON = false;
+		matchResultScreen(EP.TEMP.MATCH_RESULT_WON);
+	}
+	EP.EXECUTE.MATCH_RESULT_SCREEN = false;
 
 	EP.EXECUTE.isSendThreadActive = false;
 	EP.EXECUTE.isPhysicsThreadActive = false;
