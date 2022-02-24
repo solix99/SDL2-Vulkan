@@ -654,20 +654,13 @@ void handleCollision()
 
 int clientSendData(const string& input)
 {
-	if (MEM.OBJ.Crypto.getModulus() != 0)
+	if (strlen(input.c_str()) < DEFAULT_BUFLEN)
 	{
-		MEM.OBJ.Crypto.encryptData(input);
-
-		cout << endl << MEM.OBJ.Crypto.getDataPacket();
-
-		if (strlen(MEM.OBJ.Crypto.getDataPacket().c_str()) < DEFAULT_BUFLEN)
-		{
-			iResult = send(ConnectSocket, MEM.OBJ.Crypto.getDataPacket().c_str(), (int)strlen(MEM.OBJ.Crypto.getDataPacket().c_str()), 0);
-			if (iResult == SOCKET_ERROR) {
-				cout << endl << "send failed:" << WSAGetLastError();
-			}
-			return iResult;
+		iResult = send(ConnectSocket, input.c_str(), (int)strlen(input.c_str()), 0);
+		if (iResult == SOCKET_ERROR) {
+			cout << endl << "send failed:" << WSAGetLastError();
 		}
+		return iResult;
 	}
 }
 

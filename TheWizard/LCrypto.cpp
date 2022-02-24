@@ -23,7 +23,6 @@ void LCrypto::encryptData(string data)
     {
         dataPacket_ << encryptArray_[i] << ",";
     }
-    cout << endl << dataPacket_.str();
 }
 
 void LCrypto::decryptData(string data)
