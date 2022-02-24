@@ -73,7 +73,7 @@ private:
 	bool slotUsed;
 	bool isDead;
 
-	int DEFAULT_VEL = 50;
+	int DEFAULT_VEL = 5;
 	int p_collisionAmmount = 10;
 	SDL_Rect p_collisionRect;
 	SDL_Rect mCollider;

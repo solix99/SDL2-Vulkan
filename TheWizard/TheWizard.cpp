@@ -28,6 +28,7 @@
 #include "LAnim.h"
 #include <SDL_thread.h>
 #include "LMap.h"
+#include "LCrypto.h"
 
 WSADATA wData;
 #pragma comment(lib, "Ws2_32.lib")
@@ -42,8 +43,8 @@ WSADATA wData;
 
 using namespace std;
 
-#define DEFAULT_RESOLUTION_WIDTH 1280	
-#define DEFAULT_RESOLUTION_HEIGHT 720
+#define DEFAULT_RESOLUTION_WIDTH 1920	
+#define DEFAULT_RESOLUTION_HEIGHT 1080
 
 #define INITIAL_RESOLUTION_WIDTH 1280
 #define INITIAL_RESOLUTION_HEIGHT 720	
@@ -55,7 +56,6 @@ struct engineThreads
 	SDL_Thread* PHYSICS = NULL;
 
 }THREAD;
-
 
 struct engineParameters
 {
@@ -155,6 +155,11 @@ struct MEMEORY
 		LMap* CURRENT_MAP = new LMap;
 		LMap GRASS_WORLD;
 	}MAP;
+	struct OBJECT_DATA
+	{
+		LCrypto Crypto;
+
+	}OBJ;
 }MEM;
 
 struct MAPLIST
@@ -163,7 +168,6 @@ struct MAPLIST
 	SDL_Point MAP_SIZE[MAX_MAPS];
 
 }MAPL;
-
 
 enum PhysicsType
 {
@@ -183,7 +187,8 @@ enum INDENTIFIER_TYPE
 	MATCHING_COMPLETE,
 	MATCH_RESULT,
 	END_OF_PACKET,
-	SET_POSITION
+	SET_POSITION,
+	ENCRYPTION_INFO
 };
 
 
@@ -286,7 +291,6 @@ void handleCollision();
 void renderTextures();
 bool getPhysicsReady(int type);
 int processPhysics(void* ptr);
-int f_processMisc(void* ptr);
 void matchResultScreen();
 
 static int processPhysics(void* ptr)
@@ -365,10 +369,6 @@ static int processPhysics(void* ptr)
 				}
 			}
 
-		//	cout << endl << CLIENT.getHealth();
-
-			//Handle collision
-
 			handleCollision();
 		}
 		SDL_Delay(SDL_GLOBAL_DELAY);
@@ -393,7 +393,6 @@ bool getPhysicsReady(int type)
 			return true;
 		}
 	}
-
 	return false;
 }
 
@@ -405,6 +404,7 @@ void tryLoopExit()
 		EP.GSYS.exitLoopTimer.reset();
 	}
 }
+
 void resetPlayerData()
 {
 	CLIENT.resetData();
@@ -417,6 +417,7 @@ void resetPlayerData()
 		}
 	}
 }
+
 void matchResultScreen(bool clientWin)
 {
 	cout << endl << "TRIGGERED";
@@ -653,13 +654,20 @@ void handleCollision()
 
 int clientSendData(const string& input)
 {
-	if (strlen(input.c_str()) < DEFAULT_BUFLEN)
+	if (MEM.OBJ.Crypto.getModulus() != 0)
 	{
-		iResult = send(ConnectSocket, input.c_str(), (int)strlen(input.c_str()), 0);
-		if (iResult == SOCKET_ERROR) {
-			cout << endl << "send failed:" << WSAGetLastError();
+		MEM.OBJ.Crypto.encryptData(input);
+
+		cout << endl << MEM.OBJ.Crypto.getDataPacket();
+
+		if (strlen(MEM.OBJ.Crypto.getDataPacket().c_str()) < DEFAULT_BUFLEN)
+		{
+			iResult = send(ConnectSocket, MEM.OBJ.Crypto.getDataPacket().c_str(), (int)strlen(MEM.OBJ.Crypto.getDataPacket().c_str()), 0);
+			if (iResult == SOCKET_ERROR) {
+				cout << endl << "send failed:" << WSAGetLastError();
+			}
+			return iResult;
 		}
-		return iResult; 
 	}
 }
 
@@ -730,6 +738,7 @@ void renderTextures()
 		{
 			EP.TEMP.CAMERA_X = Player[i].getPosX() - MEM.MAP.CURRENT_MAP->getCamera().x;
 			EP.TEMP.CAMERA_Y = Player[i].getPosY() - MEM.MAP.CURRENT_MAP->getCamera().y;
+
 
 			if (Player[i].getAnimType() == "idle")
 			{
@@ -843,6 +852,8 @@ bool init()
 	//
 	//gameSettings.close();
 
+	clientSendData("THIS IS  A TEST");
+
 	ANIM_RUNNING_ATTACK.setTickTime(366);
 
 	EP.TEMP.DATAPACKET_DEFAULT << END_OF_PACKET;
@@ -926,7 +937,7 @@ bool connectToGameServer()
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 
-	iResult = getaddrinfo("192.168.1.6", DEFAULT_PORT, &hints, &result);
+	iResult = getaddrinfo("192.168.100.3", DEFAULT_PORT, &hints, &result);
 	if (iResult != 0) {
 		cout << endl << "getaddrinfo failed:", iResult;
 		WSACleanup();
@@ -1488,7 +1499,7 @@ int oldSql(void* ptr)
 
 int v1, v2;
 
-string getFinalData(const string& data)
+string getDataBlock(const string& data)
 {
 	v2 = v1;
 	v1 = data.find(',', v2 + 1);
@@ -1523,18 +1534,22 @@ int recivePacket(void* ptr)
 			identifier = atoi(data.substr(0, v1).c_str());
 
 		//	cout << endl << data;
-
+			if (identifier == ENCRYPTION_INFO)
+			{
+				MEM.OBJ.Crypto.setModulus(atoi(getDataBlock(data).c_str()));
+				MEM.OBJ.Crypto.setPublicKey(atoi(getDataBlock(data).c_str()));
+			}
 			if (identifier == GET_DATA_ABOUT_PLAYER)
 			{
-				count = getFinalData(data);
+				count = getDataBlock(data);
 				for (unsigned int i = 0; i < atoi(count.c_str()); i++)
 				{
-					ID[i] = getFinalData(data);
-					nickname[i] = getFinalData(data);
-					posX[i] = getFinalData(data);
-					posY[i] = getFinalData(data);
-					rFlipType[i] = getFinalData(data);
-					animType[i] = getFinalData(data);
+					ID[i] = getDataBlock(data);
+					nickname[i] = getDataBlock(data);
+					posX[i] = getDataBlock(data);
+					posY[i] = getDataBlock(data);
+					rFlipType[i] = getDataBlock(data);
+					animType[i] = getDataBlock(data);
 				}
 
 				for (unsigned int i = 0; i < atoi(count.c_str()); i++)
@@ -1561,7 +1576,7 @@ int recivePacket(void* ptr)
 			}
 			else if (identifier == DELETE_PLAYER)
 			{
-				string ID = getFinalData(data);
+				string ID = getDataBlock(data);
 				for (unsigned int i = 0; i < MAX_PLAYER_ENTITY; i++)
 				{
 					if (Player[i].getIfSlotUsed() && !Player[i].getPlayerDead() && (Player[i].getPlayerID() == ID))
@@ -1573,8 +1588,8 @@ int recivePacket(void* ptr)
 			}
 			else if (identifier == NEW_PLAYER)
 			{
-				ID[0] = getFinalData(data);
-				nickname[0] = getFinalData(data);
+				ID[0] = getDataBlock(data);
+				nickname[0] = getDataBlock(data);
 
 				if (ID[0] != gServer.getClientID())
 				{
@@ -1594,9 +1609,9 @@ int recivePacket(void* ptr)
 			}
 			else if (identifier == DAMAGE_PLAYER)
 			{
-				ID[0] = getFinalData(data); // dmg giver
-				ID[1] = getFinalData(data); // dmg taker
-				EP.TEMP.damageAmount = atoi(getFinalData(data).c_str());
+				ID[0] = getDataBlock(data); // dmg giver
+				ID[1] = getDataBlock(data); // dmg taker
+				EP.TEMP.damageAmount = atoi(getDataBlock(data).c_str());
 
 				if (ID[1] == gServer.getClientID())
 				{
@@ -1616,12 +1631,12 @@ int recivePacket(void* ptr)
 			}
 			else if (identifier == MATCHING_COMPLETE)
 			{
-				int mTypePC = atoi(getFinalData(data).c_str()) == TWO_PLAYER ? 2 : 4;
+				int mTypePC = atoi(getDataBlock(data).c_str()) == TWO_PLAYER ? 2 : 4;
 
 				for (int i = 0; i < mTypePC; i++)
 				{
-					ID[i] = getFinalData(data);
-					nickname[i] = getFinalData(data);
+					ID[i] = getDataBlock(data);
+					nickname[i] = getDataBlock(data);
 
 					if (ID[i] != gServer.getClientID())
 					{
@@ -1640,16 +1655,17 @@ int recivePacket(void* ptr)
 						}
 					}
 				}
+
 				EP.EXECUTE.inMatchingScreen = false;
 			}
 			else if (identifier == UPDATE_BULLET)
 			{
-				ID[0] = getFinalData(data);
-				nickname[0] = getFinalData(data);
-				posX[0] = getFinalData(data);
-				posY[0] = getFinalData(data);
-				posX2 = getFinalData(data);
-				posY2 = getFinalData(data);
+				ID[0] = getDataBlock(data);
+				nickname[0] = getDataBlock(data);
+				posX[0] = getDataBlock(data);
+				posY[0] = getDataBlock(data);
+				posX2 = getDataBlock(data);
+				posY2 = getDataBlock(data);
 
 				for (int i = 0; i < MAX_PLAYER_ENTITY; i++)
 				{
@@ -1681,7 +1697,7 @@ int recivePacket(void* ptr)
 			{
 				cout << endl << "got result";
 
-				ID[0] = getFinalData(data);
+				ID[0] = getDataBlock(data);
 
 				EP.TEMP.MATCH_RESULT_WON = ID[0] == gServer.getClientID() ? true : false;
 
@@ -1691,16 +1707,16 @@ int recivePacket(void* ptr)
 			}
 			else if (identifier == SET_POSITION)
 			{
-				posX[0] = getFinalData(data);
-				posY[0] = getFinalData(data);
+				posX[0] = getDataBlock(data);
+				posY[0] = getDataBlock(data);
 
 				CLIENT.setPosX(atoi(posX[0].c_str()));
 				CLIENT.setPosY(atoi(posY[0].c_str()));
 			}
 			else if (identifier == KILL_PLAYER)
 			{
-				ID[0] = getFinalData(data); // dmg giver
-				ID[1] = getFinalData(data); // dmg taker
+				ID[0] = getDataBlock(data); // dmg giver
+				ID[1] = getDataBlock(data); // dmg taker
 
 				for (unsigned int i = 0; i < MAX_PLAYER_ENTITY; i++)
 				{
@@ -1960,8 +1976,8 @@ bool playLoop()
 		EP.TEMP.MATCH_RESULT_WON = false;
 		matchResultScreen(EP.TEMP.MATCH_RESULT_WON);
 	}
-	EP.EXECUTE.MATCH_RESULT_SCREEN = false;
 
+	EP.EXECUTE.MATCH_RESULT_SCREEN = false;
 	EP.EXECUTE.isSendThreadActive = false;
 	EP.EXECUTE.isPhysicsThreadActive = false;
 
