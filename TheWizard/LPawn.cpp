@@ -191,7 +191,7 @@ bool LPawn::getIfMoving()
 }
 void LPawn::spawnProjectile(int x, int y, int ang, int dx, int dy, float projSpeed)
 {
-	for (unsigned int i = 0; i < 30; i++)
+	for (unsigned int i = 0; i < MAX_PROJECTILES; i++)
 	{
 		if (gProjectile[i].getSlotFree())
 		{

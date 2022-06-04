@@ -72,11 +72,9 @@ void LTexture::render(SDL_Renderer* gRenderer, int x, int y, SDL_Rect* clip, dou
 }
 void LTexture::renderSimple(SDL_Renderer* gRenderer, int x, int y)
 {
-	//Set rendering space and render to screen
 	SDL_Rect renderQuad = { x, y, mWidth, mHeight };
 
 	SDL_SetRenderDrawColor(gRenderer, 255, 255, 255, 255);
-	SDL_RenderDrawRect(gRenderer, &collisionBox);
 
 	//Render to screen
 	SDL_RenderCopyEx(gRenderer, mTexture , NULL, &renderQuad, 0,0, SDL_FLIP_NONE);
@@ -92,7 +90,6 @@ int LTexture::getHeight()
 {
 	return mHeight;
 }
-
 
 LTexture::~LTexture()
 {
@@ -113,7 +110,7 @@ bool LTexture::loadFromRenderedText(std::string textureText, SDL_Color textColor
 		mTexture = SDL_CreateTextureFromSurface(gRenderer, textSurface);
 		if (mTexture == NULL)
 		{
-			//cout<<"Unable to create texture from rendered text! SDL Error:\n" << SDL_GetError();
+			cout<<"Unable to create texture from rendered text! SDL Error:\n" << SDL_GetError();
 		}
 		else
 		{
@@ -130,7 +127,7 @@ bool LTexture::loadFromRenderedText(std::string textureText, SDL_Color textColor
 	}
 	else
 	{
-		//cout<<"Unable to render text surface! SDL_ttf Error: \n" << TTF_GetError();
+		cout<<"Unable to render text surface! SDL_ttf Error: \n" << TTF_GetError();
 	}
 
 

@@ -1,8 +1,6 @@
 #include "Lbutton.h"
 #include "LTexture.h"
 
-
-
 LButton::LButton()
 {
 	mPosition.x = 0;
@@ -74,5 +72,4 @@ void LButton::init(string path, SDL_Renderer* gRenderer,int posX,int posY)
 	mPosition.y = posY;
 	mPosition.w = TEXTURE_.getWidth();
 	mPosition.h = TEXTURE_.getHeight();
-
 }

@@ -77,51 +77,42 @@ void LProjectile::setDMG(int d)
 	p_DMG = d;
 }
 
-bool LProjectile::checkCollision(SDL_Rect a, SDL_Rect b)
+bool LProjectile::checkCollision(SDL_Rect FIRST_RECT, SDL_Rect SECOND_RECT)
 {
 	int leftA, leftB;
 	int rightA, rightB;
 	int topA, topB;
 	int bottomA, bottomB;
 
-	//Calculate the sides of rect A
-	leftA = a.x;
-	rightA = a.x + a.w;
-	topA = a.y;
-	bottomA = a.y + a.h;
+	leftA = FIRST_RECT.x;
+	rightA = FIRST_RECT.x + FIRST_RECT.w;
+	topA = FIRST_RECT.y;
+	bottomA = FIRST_RECT.y + FIRST_RECT.h;
 
-	//Calculate the sides of rect B
-	leftB = b.x;
-	rightB = b.x + b.w;
-	topB = b.y;
-	bottomB = b.y + b.h;
+	leftB = SECOND_RECT.x;
+	rightB = SECOND_RECT.x + SECOND_RECT.w;
+	topB = SECOND_RECT.y;
+	bottomB = SECOND_RECT.y + SECOND_RECT.h;
 
-	//If any of the sides from A are outside of B
 	if (bottomA <= topB)
 	{
 		return false;
 	}
-
 	if (topA >= bottomB)
 	{
 		return false;
 	}
-
 	if (rightA <= leftB)
 	{
 		return false;
 	}
-
 	if (leftA >= rightB)
 	{
 		return false;
 	}
-
-	{
-
-	}    //If none of the sides from A are outside B
 	return true;
 }
+ 
 void LProjectile::setAngle(float a)
 {
 	angle = a;

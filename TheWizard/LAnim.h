@@ -24,7 +24,7 @@ public:
 	void startAnimTimer(int,int);
 	void setCurrentTickClient(int i, int j, int tick);
 	void setCropInUse(int i, bool b);
-	void renderStaticAnim(SDL_Renderer * gRenderer, bool renderCollisiionBox,int colW ,int colH, int colX, int colY);
+	void renderStaticAnim(SDL_Renderer * gRenderer,int cameraX,int cameraY);
 	void setIsInverseSeq(int i, int j, bool b);
 
 	void updateAnim(int i, int j);

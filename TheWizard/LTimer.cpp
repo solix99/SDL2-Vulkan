@@ -93,7 +93,6 @@ Uint32 LTimer::getTicks()
 			time = SDL_GetTicks() - mStartTicks;
 		}
 	}
-
 	return time;
 }
 

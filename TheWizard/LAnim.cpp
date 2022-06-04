@@ -173,7 +173,7 @@ bool LAnim::addNewStaticAnim(int posX, int posY, bool isCrop,bool renderInverse)
 	return true;
 }
 
-void LAnim::renderStaticAnim(SDL_Renderer * gRenderer,bool renderCollisiionBox, int colW, int colH,int colX, int colY)
+void LAnim::renderStaticAnim(SDL_Renderer * gRenderer, int cameraX, int cameraY)
 {
 	//RENDER SEQ ANIM
 
@@ -185,7 +185,7 @@ void LAnim::renderStaticAnim(SDL_Renderer * gRenderer,bool renderCollisiionBox, 
 			{
 				if (seqInUse[i][j] && isInverseSeq[i][j] == false)
 				{	
-					animTexture[currentTickClient[i][j]].render(gRenderer, seqPosX[i][j], seqPosY[i][j], NULL, animAngle[i][j], NULL, SDL_FLIP_NONE, renderCollisiionBox, colW, colH,colX,colY);
+					animTexture[currentTickClient[i][j]].render(gRenderer, seqPosX[i][j] - cameraX, seqPosY[i][j] - cameraY, NULL, animAngle[i][j], NULL, SDL_FLIP_NONE, false,0,0,0,0);
 
 					if (animTimer[i][j].getTicks() > 500 / tickCount)
 					{
@@ -200,7 +200,7 @@ void LAnim::renderStaticAnim(SDL_Renderer * gRenderer,bool renderCollisiionBox, 
 				}
 				else if (isInverseSeq[i][j] && p_renderInverse)
 				{
-					animTexture[tickCount - currentTickClient[i][j]].render(gRenderer, seqPosX[i][j], seqPosY[i][j], NULL, animAngle[i][j], NULL, SDL_FLIP_NONE, renderCollisiionBox, colW, colH,colX,colY);
+					animTexture[tickCount - currentTickClient[i][j]].render(gRenderer, seqPosX[i][j] - cameraX, seqPosY[i][j] - cameraY, NULL, animAngle[i][j], NULL, SDL_FLIP_NONE, false, 0, 0, 0, 0);
 
 					if (animTimer[i][j].getTicks() > 500 / tickCount)
 					{
@@ -224,7 +224,7 @@ void LAnim::renderStaticAnim(SDL_Renderer * gRenderer,bool renderCollisiionBox, 
 		{
 			if (cropInUse[i] && !isInverse[i])
 			{
-				animTexture[0].render(gRenderer, cropPosX[i], cropPosY[i], &animRect[currentTickClient[0][i]], 0, 0, SDL_FLIP_NONE,renderCollisiionBox, colW, colH,colX,colY);
+				animTexture[0].render(gRenderer, cropPosX[i] - cameraX, cropPosY[i] - cameraY, &animRect[currentTickClient[0][i]], 0, 0, SDL_FLIP_NONE, false, 0, 0, 0, 0);
 
 				if (animTimer[0][i].getTicks() > tickTime / tickCount)
 				{
@@ -245,11 +245,10 @@ void LAnim::renderStaticAnim(SDL_Renderer * gRenderer,bool renderCollisiionBox, 
 						cropInUse[i] = false;
 					}
 				}
-
 			}
 			else if (isInverse[i] && p_renderInverse)
 			{
-				animTexture[0].render(gRenderer, cropPosX[i], cropPosY[i], &animRect[tickCount - currentTickClient[0][i]], 0, 0, SDL_FLIP_NONE,renderCollisiionBox, colW, colH,colX,colY);
+				animTexture[0].render(gRenderer, cropPosX[i] - cameraX, cropPosY[i] - cameraY, &animRect[currentTickClient[0][i]], 0, 0, SDL_FLIP_NONE, false, 0, 0, 0, 0);
 
 				if (animTimer[0][i].getTicks() > tickTime / tickCount)
 				{
@@ -266,7 +265,6 @@ void LAnim::renderStaticAnim(SDL_Renderer * gRenderer,bool renderCollisiionBox, 
 			}
 		}
 	}
-
 }
 
 bool LAnim::getIsInverse(bool b)

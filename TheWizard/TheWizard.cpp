@@ -2,7 +2,7 @@
 // Hey there
 
 #include <winsock2.h>
-#include <ws2tcpip.h>
+//#include <ws2tcpip.h>
 #include <windows.h>
 #include <iphlpapi.h>
 #include <string>
@@ -62,6 +62,7 @@ struct engineParameters
 	struct FSTREAM
 	{
 		fstream gameLog;
+		fstream mapData;
 	}FSTR;
 
 	struct ANIMATION
@@ -77,7 +78,7 @@ struct engineParameters
 		LTimer fpsTimer;
 		LTimer exitLoopTimer;
 		LTimer matchResultTimer;
-		int physicsRate = 20;
+		int physicsRate = 5;
 		float DEFAULT_PROJ_SPEED = 15.0f;
 		SDL_Rect RESOLUTION_CLIP;
 
@@ -97,6 +98,7 @@ struct engineParameters
 		bool isPhysicsThreadActive = false;
 		bool isReciveThreadActive = false;
 		bool MATCH_RESULT_SCREEN = false;
+		bool INSERT_OBJECT = false;
 
 	}EXECUTE;
 	struct TEMPORAL
@@ -112,10 +114,17 @@ struct engineParameters
 		bool MATCH_RESULT_WON = false;
 		int CAMERA_X;
 		int CAMERA_Y;
+		int MAP_OBJECT_ID;
+		int MOUSE_X;
+		int MOUSE_Y;
 
 		stringstream miscSS;
 		stringstream DATAPACKET;
 		stringstream DATAPACKET_DEFAULT;
+
+		SDL_Rect OBJECT_RECT;
+
+	
 	}TEMP;
 
 }EP;
@@ -133,6 +142,7 @@ struct MEMEORY
 		LTexture MATCH_RESULT_LOST;
 		LTexture GRASS_BG;
 		LTexture BRICK_FLOOR;
+		LTexture NEW_OBJECT;
 
 
 	}TEXTR;
@@ -204,7 +214,7 @@ enum MATCHING_TYPE
 	FOUR_PLAYER
 };
 
-bool SKIP_CONN = false;
+bool SKIP_CONN = true;
 
 int iResult;
 struct addrinfo* result = NULL, * ptr = NULL, hints;
@@ -500,6 +510,8 @@ bool checkCollision(SDL_Rect a, SDL_Rect b)
 
 void handleCollision()
 {
+	SDL_Rect collisionRect;
+
 	//CHEKING FOR PLAYER COLLISION
 
 	for (unsigned int i = 0; i < MAX_PLAYER_ENTITY; i++)
@@ -511,8 +523,22 @@ void handleCollision()
 				CLIENT.setPosX(xLast);
 				CLIENT.setPosY(yLast);
 				collisionFound = true;
+				break;
+			}
+		}
+	}
 
+	//Collisions between player and map objects
 
+	for (unsigned int i = 0; i < MEM.MAP.CURRENT_MAP->getMaxObjects(); i++)
+	{
+		if (MEM.MAP.CURRENT_MAP->getObjectSlotUsed(i) && MEM.MAP.CURRENT_MAP->getTextureCollisionBool(i))
+		{
+			if (checkCollision(CLIENT.getmCollider(), MEM.MAP.CURRENT_MAP->getTextureCollisionRect(i)))
+			{
+				CLIENT.setPosX(xLast);
+				CLIENT.setPosY(yLast);
+				collisionFound = true;
 				break;
 			}
 		}
@@ -525,6 +551,49 @@ void handleCollision()
 	}
 
 	collisionFound = false;
+
+
+	//CHECKING FOR COLLISIONS BETWEEN PROJECTILES AND MAP OBJECTS
+
+	for (int i = 0; i < MEM.MAP.CURRENT_MAP->getMaxObjects(); i++)
+	{
+		if (MEM.MAP.CURRENT_MAP->getObjectSlotUsed(i) && MEM.MAP.CURRENT_MAP->getTextureCollisionBool(i))
+		{
+			for (unsigned int j = 0; j < MAX_PLAYER_BULLET_COUNT; j++)
+			{
+				if (!CLIENT.gProjectile[j].getSlotFree())
+				{
+					if (checkCollision(CLIENT.gProjectile[j].getCollisionRect(), MEM.MAP.CURRENT_MAP->getTextureCollisionRect(i)))
+					{
+						CLIENT.gProjectile[j].setSlotFree(true);
+						ANIM_FIREBALL.setCurrentTickClient(j, CLIENT_UNIQUE_ID, 0);
+						ANIM_CONTACT_REDEXPLOSION.addNewStaticAnim(MEM.MAP.CURRENT_MAP->getTextureCollisionRect(i).x, MEM.MAP.CURRENT_MAP->getTextureCollisionRect(i).y, true, false);
+					}
+				}
+			}
+
+			//CHECK FOR PROJECTILES OF OTHER PLAYERS
+
+			for (unsigned int j = 0; j < MAX_PLAYER_ENTITY; j++)
+			{
+				if (Player[j].getIfSlotUsed() && !Player[j].getPlayerDead())
+				{
+					for (unsigned int k = 0; k < MAX_PLAYER_BULLET_COUNT; k++)
+					{
+						if (!Player[j].gProjectile[k].getSlotFree())
+						{
+							if (checkCollision(Player[j].gProjectile[k].getCollisionRect(), MEM.MAP.CURRENT_MAP->getTextureCollisionRect(i)))
+							{
+								Player[j].gProjectile[k].setSlotFree(true);
+								ANIM_FIREBALL.setCurrentTickClient(j, k, 0);
+								ANIM_CONTACT_REDEXPLOSION.addNewStaticAnim(MEM.MAP.CURRENT_MAP->getTextureCollisionRect(i).x, MEM.MAP.CURRENT_MAP->getTextureCollisionRect(i).y, true, false);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
 
 	//CHECKING FOR BULLLET COLLSISION OF OTHER PLAYERS
 
@@ -650,6 +719,9 @@ void handleCollision()
 			}
 		}
 	}
+
+
+
 }
 
 int clientSendData(const string& input)
@@ -674,7 +746,7 @@ void renderTextures()
 
 	//RENDER GROUND
 
-   	MEM.MAP.GRASS_WORLD.renderMap(gWindow.getRenderer(), CLIENT.getPlayerPoint());
+   	MEM.MAP.CURRENT_MAP->renderMap(gWindow.getRenderer(), CLIENT.getPlayerPoint());
 
 	EP.TEMP.CAMERA_X = CLIENT.getPosX() - MEM.MAP.CURRENT_MAP->getCamera().x;
 	EP.TEMP.CAMERA_Y = CLIENT.getPosY() - MEM.MAP.CURRENT_MAP->getCamera().y;
@@ -683,17 +755,17 @@ void renderTextures()
 
 	if (ANIM_RUNNING_ATTACK.getInUse())
 	{
-		ANIM_RUNNING_ATTACK.renderTexture(gWindow.getRenderer(), EP.TEMP.CAMERA_X, EP.TEMP.CAMERA_Y, 0, 0, CLIENT_UNIQUE_ID, false, flipType, 500, 50, EP.EXECUTE.renderCollisionBox, CLIENT.getCollisionRect().w, CLIENT.getCollisionRect().h, CLIENT.getCollisionRect().x, CLIENT.getCollisionRect().y);
+		ANIM_RUNNING_ATTACK.renderTexture(gWindow.getRenderer(), EP.TEMP.CAMERA_X, EP.TEMP.CAMERA_Y, 0, 0, CLIENT_UNIQUE_ID, false, flipType, 500, 500, EP.EXECUTE.renderCollisionBox, CLIENT.getCollisionRect().w, CLIENT.getCollisionRect().h, EP.TEMP.CAMERA_X + CLIENT.getCollisionRect().w / 2, EP.TEMP.CAMERA_Y + CLIENT.getCollisionRect().h / 2);
 		CLIENT.setAnimType("runAttack");
 	}
 	else if (CLIENT.getIfMoving())
 	{
-		ANIM_WALKING.renderTexture(gWindow.getRenderer(), EP.TEMP.CAMERA_X, EP.TEMP.CAMERA_Y, 0, 0, CLIENT_UNIQUE_ID, false, flipType, 500, 500, EP.EXECUTE.renderCollisionBox, CLIENT.getCollisionRect().w, CLIENT.getCollisionRect().h, CLIENT.getCollisionRect().x, CLIENT.getCollisionRect().y);
+		ANIM_WALKING.renderTexture(gWindow.getRenderer(), EP.TEMP.CAMERA_X, EP.TEMP.CAMERA_Y, 0, 0, CLIENT_UNIQUE_ID, false, flipType, 500, 500, EP.EXECUTE.renderCollisionBox, CLIENT.getCollisionRect().w, CLIENT.getCollisionRect().h, EP.TEMP.CAMERA_X + CLIENT.getCollisionRect().w/2, EP.TEMP.CAMERA_Y + CLIENT.getCollisionRect().h/2);
 		CLIENT.setAnimType("walking");
 	}
 	else
 	{
-		ANIM_IDLE.renderTexture(gWindow.getRenderer(), EP.TEMP.CAMERA_X, EP.TEMP.CAMERA_Y, 0, 0, CLIENT_UNIQUE_ID, false, flipType, 500, 500, EP.EXECUTE.renderCollisionBox, CLIENT.getCollisionRect().w, CLIENT.getCollisionRect().h, CLIENT.getCollisionRect().x, CLIENT.getCollisionRect().y);
+		ANIM_IDLE.renderTexture(gWindow.getRenderer(), EP.TEMP.CAMERA_X, EP.TEMP.CAMERA_Y, 0, 0, CLIENT_UNIQUE_ID, false, flipType, 500, 500, EP.EXECUTE.renderCollisionBox, CLIENT.getCollisionRect().w, CLIENT.getCollisionRect().h, EP.TEMP.CAMERA_X + CLIENT.getCollisionRect().w / 2, EP.TEMP.CAMERA_Y + CLIENT.getCollisionRect().h / 2);
 		CLIENT.setAnimType("idle");
 	}
 
@@ -757,7 +829,7 @@ void renderTextures()
 
 	//RENDER EXPOSION COLLISIONS
 
-	ANIM_CONTACT_REDEXPLOSION.renderStaticAnim(gWindow.getRenderer(), EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+	ANIM_CONTACT_REDEXPLOSION.renderStaticAnim(gWindow.getRenderer(), MEM.MAP.CURRENT_MAP->getCamera().x, MEM.MAP.CURRENT_MAP->getCamera().y);
 
 	//RENDER CROSSHAIR
 
@@ -768,6 +840,12 @@ void renderTextures()
 	MEM.TEXTR.fpsText.render(gWindow.getRenderer(), 0, 0, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
 
 	//Render to window
+
+	if (EP.EXECUTE.INSERT_OBJECT)
+	{
+		MEM.TEXTR.NEW_OBJECT.renderSimple(gWindow.getRenderer(), EP.TEMP.MOUSE_X, EP.TEMP.MOUSE_Y);
+	}
+
 
 	gWindow.render();
 
@@ -844,8 +922,6 @@ bool init()
 	//gWindow.setFullscreen(temp);
 	//
 	//gameSettings.close();
-
-	clientSendData("THIS IS  A TEST");
 
 	ANIM_RUNNING_ATTACK.setTickTime(366);
 
@@ -1065,7 +1141,7 @@ bool loadMedia()
 
 	//GRASS WORLD
 
-	MEM.MAP.GRASS_WORLD.initMap(gWindow.getRenderer(), 4000, 4000, gWindow.getWidth(), gWindow.getHeight(), MEM.TEXTR.PAWN_COLLISION_REFERENCE.getWidth(), MEM.TEXTR.PAWN_COLLISION_REFERENCE.getHeight());
+	MEM.MAP.GRASS_WORLD.initMap(gWindow.getRenderer(), "img/MAP_TEXTURES/GRASS_WORLD/texture_000.png", 50, "data/grass_world_data" ,4000, 4000, gWindow.getWidth(), gWindow.getHeight(), MEM.TEXTR.PAWN_COLLISION_REFERENCE.getWidth(), MEM.TEXTR.PAWN_COLLISION_REFERENCE.getHeight());
 
 	createBigTexture(MEM.TEXTR.GRASS_BG, *MEM.MAP.GRASS_WORLD.getBackgroundTexture(), MEM.MAP.GRASS_WORLD.getMapSize().x, MEM.MAP.GRASS_WORLD.getMapSize().y);
 
@@ -1504,10 +1580,8 @@ int recivePacket(void* ptr)
 	char sendbuf[DEFAULT_BUFLEN];
 	char recvbuff[DEFAULT_BUFLEN];
 
-	string posX[MAX_PLAYER_ENTITY], posY[MAX_PLAYER_ENTITY], ID[MAX_PLAYER_ENTITY], nickname[MAX_PLAYER_ENTITY], count, rFlipType[MAX_PLAYER_ENTITY], animType[MAX_PLAYER_ENTITY];
-	string posX2, posY2, id;
+	string posX[MAX_PLAYER_ENTITY], posY[MAX_PLAYER_ENTITY], ID[MAX_PLAYER_ENTITY], nickname[MAX_PLAYER_ENTITY], count, rFlipType[MAX_PLAYER_ENTITY], animType[MAX_PLAYER_ENTITY], data, posX2, posY2, id;
 	bool exists = false;
-	string data;
 	int frame = 0, identifier;
 
 	LTimer fps;
@@ -1879,9 +1953,28 @@ bool playLoop()
 		{
 			if (e.type == SDL_KEYDOWN)
 			{
-				if (e.key.keysym.sym == SDLK_SPACE)
+				if (e.key.keysym.sym == SDLK_INSERT)
 				{
+					if (EP.EXECUTE.INSERT_OBJECT)
+					{
+						EP.FSTR.mapData.open(*MEM.MAP.CURRENT_MAP->getDataPath(), ios::out | ios::app);
+						EP.FSTR.mapData << EP.TEMP.MAP_OBJECT_ID << " " << CLIENT.getPosX() + EP.TEMP.MOUSE_X - EP.TEMP.CAMERA_X << " " << CLIENT.getPosY() + EP.TEMP.MOUSE_Y - EP.TEMP.CAMERA_Y << " ";
+						EP.FSTR.mapData.close();
+						MEM.MAP.CURRENT_MAP->insertObject(EP.TEMP.MAP_OBJECT_ID, CLIENT.getPosX() + EP.TEMP.MOUSE_X - EP.TEMP.CAMERA_X, CLIENT.getPosY() + EP.TEMP.MOUSE_Y - EP.TEMP.CAMERA_Y);
+					}
+				}
+				if (e.key.keysym.sym == SDLK_HOME)
+				{
+					cin >> EP.TEMP.MAP_OBJECT_ID;
+					MEM.TEXTR.NEW_OBJECT = *MEM.MAP.CURRENT_MAP->getObjectTexture(EP.TEMP.MAP_OBJECT_ID);
 
+					EP.EXECUTE.INSERT_OBJECT = true;
+				}
+				if (e.key.keysym.sym == SDLK_DELETE)
+				{
+					SDL_Rect tempCollision = { CLIENT.getPosX() + EP.TEMP.MOUSE_X - EP.TEMP.CAMERA_X, CLIENT.getPosY() + EP.TEMP.MOUSE_Y - EP.TEMP.CAMERA_Y, 10,10};
+					MEM.MAP.CURRENT_MAP->deleteObject(tempCollision);
+					EP.EXECUTE.INSERT_OBJECT = false;
 				}
 				if (e.key.keysym.sym == SDLK_MINUS)
 				{
@@ -1893,7 +1986,7 @@ bool playLoop()
 					{
 						EP.EXECUTE.renderCollisionBox = true;
 					}
-				}
+				}	
 			}
 			else if (e.type == SDL_TEXTINPUT)
 			{
@@ -1928,6 +2021,9 @@ bool playLoop()
 			{
 				mouseX = e.motion.x;
 				mouseY = e.motion.y;
+
+				EP.TEMP.MOUSE_X = mouseX - (crosshair_texture.getWidth() / 2);
+				EP.TEMP.MOUSE_Y = mouseY - (crosshair_texture.getHeight() / 2) + 40;
 			}
 		}
 

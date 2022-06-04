@@ -88,6 +88,7 @@ private:
 	int yCollisionOffset;
 	int p_health;
 	int pDefaultHealth;
+	const int MAX_PROJECTILES = 30;
 
 	string flipTypeString, animType;
 	string playerID;

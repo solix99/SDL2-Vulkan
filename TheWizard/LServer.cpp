@@ -316,16 +316,13 @@ string LServer::getClientID()
 
 int LServer::attemptRegister(string user, string pass)
 {
-
 	stringstream ss;
 	string query;
 	const char* q;
 
-
 	ss << "SELECT * FROM account_db;";
 	query = ss.str();
 	q = query.c_str();
-
 
 	if (user.length() > 3 && pass.length() > 3)
 	{
@@ -372,24 +369,18 @@ int LServer::attemptRegister(string user, string pass)
 				cout << endl << "Server error";
 				return 2;
 			}
-			else
-			{
-
-			}
 		}
 		else
 		{
 			cout << endl << "Server error";
 			return 2;
 		}
-
 		return 0;
 	}
 	else
 	{
 		return 3;
 	}
-
 
 	//1 - username already exists
 	//2 - server error
