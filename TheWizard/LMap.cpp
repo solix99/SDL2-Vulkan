@@ -22,6 +22,19 @@ void LMap::initMap(SDL_Renderer * gRenderer, string texturePackPath, int texture
 	TEXTURE_HAS_COLLISIION_[17] = false;
 	TEXTURE_HAS_COLLISIION_[18] = false;
 	TEXTURE_HAS_COLLISIION_[19] = false;
+	TEXTURE_HAS_COLLISIION_[21] = false;
+	TEXTURE_HAS_COLLISIION_[29] = false;
+	TEXTURE_HAS_COLLISIION_[30] = false;
+	TEXTURE_HAS_COLLISIION_[36] = false;
+	TEXTURE_HAS_COLLISIION_[37] = false;
+	TEXTURE_HAS_COLLISIION_[38] = false;
+	TEXTURE_HAS_COLLISIION_[39] = false;
+	TEXTURE_HAS_COLLISIION_[40] = false;
+	TEXTURE_HAS_COLLISIION_[41] = false;
+	TEXTURE_HAS_COLLISIION_[43] = false;
+	TEXTURE_HAS_COLLISIION_[44] = false;
+	TEXTURE_HAS_COLLISIION_[30] = false;
+	TEXTURE_HAS_COLLISIION_[31] = false;
 
 	DATA_PATH_ = dataPath;
 
@@ -64,7 +77,7 @@ void LMap::initMap(SDL_Renderer * gRenderer, string texturePackPath, int texture
 		TEXTURE_RECT_[i].h = MAP_TEXTURE_[i].getHeight();
 	}
 
-	int data[3];
+	int data[3], k = 0;
 
 	MAP_STREAM_.open(dataPath, ios::in);
 
@@ -80,10 +93,13 @@ void LMap::initMap(SDL_Renderer * gRenderer, string texturePackPath, int texture
 				OBJECT_RECT_[i].w = TEXTURE_RECT_[TEXTURE_ID_[i]].w;
 				OBJECT_RECT_[i].h = TEXTURE_RECT_[TEXTURE_ID_[i]].h;
 				TEXTURE_SLOT_USED_[i] = true;
+				k = i;
 				break;
 			}
 		}
 	}
+
+	cout << endl << "MAP OBJECTS:" << k;
 
 	MAP_STREAM_.close();
 }
