@@ -321,6 +321,21 @@ void testEnviroment();
 VkInstance createVkInstance(SDL_Window* window);
 bool isDeviceSuitable(VkPhysicalDevice device);
 VkShaderModule createShaderModule(VkDevice device, const std::vector<char>& code);
+uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+
+uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) 
+{
+	VkPhysicalDeviceMemoryProperties memProperties;
+	vkGetPhysicalDeviceMemoryProperties(EP.RND.PHYSICAL_DEVICE_VK, &memProperties);
+
+	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+			return i;
+		}
+	}
+
+	throw std::runtime_error("failed to find suitable memory type!");
+}
 
 bool isDeviceSuitable(VkPhysicalDevice device) 
 {
@@ -346,7 +361,25 @@ VkShaderModule createShaderModule(VkDevice device, const std::vector<char>& code
 
 	return shaderModule;
 }
+VkMemoryPropertyFlags getRequiredMemoryFlags(VkBufferUsageFlags usageFlags) {
+	VkMemoryPropertyFlags requiredFlags = 0;
 
+	if (usageFlags & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) {
+		requiredFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	}
+
+	if (usageFlags & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) {
+		requiredFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	}
+
+	if (usageFlags & VK_BUFFER_USAGE_INDEX_BUFFER_BIT) {
+		requiredFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	}
+
+	// add other usage flags as needed
+
+	return requiredFlags;
+}
 std::vector<char> readFile(const std::string& filename) {
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
@@ -882,7 +915,114 @@ bool initVulkan()
 		return result;
 	}
 
+	// Get the command pool and a command buffer from it
+	VkCommandPool commandPool = nullptr;
+	VkCommandBuffer commandBuffer = nullptr;
 
+	VkCommandPoolCreateInfo poolCreateInfo = {};
+	poolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	poolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+	poolCreateInfo.queueFamilyIndex = queueCreateInfo.queueFamilyIndex;
+
+	if (vkCreateCommandPool(EP.RND.LOGICAL_DEVICE_VK, &poolCreateInfo, nullptr, &commandPool) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to create command pool");
+	}
+
+	VkCommandBufferAllocateInfo allocateInfo = {};
+	allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocateInfo.commandPool = commandPool;
+	allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocateInfo.commandBufferCount = 1;
+
+	if (vkAllocateCommandBuffers(EP.RND.LOGICAL_DEVICE_VK, &allocateInfo, &commandBuffer) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to allocate command buffer");
+	}
+
+	// Begin recording commands into the command buffer
+	VkCommandBufferBeginInfo beginInfo = {};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+
+	if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to begin command buffer");
+	}
+
+	// Begin a render pass
+	VkRenderPassBeginInfo renderPassBeginInfo = {};
+	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassBeginInfo.renderPass = renderPass;
+	renderPassBeginInfo.framebuffer = swapchainFramebuffers.back();
+	renderPassBeginInfo.renderArea.offset = { 0, 0 };
+	renderPassBeginInfo.renderArea.extent = {static_cast<unsigned int>(gWindow.getWidth()),static_cast<unsigned int>(gWindow.getHeight())};
+
+	VkClearValue clearValue = { 0.0f, 0.0f, 0.0f, 1.0f };
+	renderPassBeginInfo.clearValueCount = 1;
+	renderPassBeginInfo.pClearValues = &clearValue;
+
+	// Step 1: Allocate memory for vertex data
+	float vertexData[] = { 1, 2, 3, 4 };
+
+	// Step 2: Create a buffer
+	VkBufferCreateInfo bufferCreateInfo = {};
+	bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferCreateInfo.size = sizeof(vertexData);
+	bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	VkBuffer vertexBuffer;
+	vkCreateBuffer(EP.RND.LOGICAL_DEVICE_VK, &bufferCreateInfo, nullptr, &vertexBuffer);
+
+	// Step 3: Allocate memory for the buffer
+	VkMemoryRequirements memRequirements;
+	vkGetBufferMemoryRequirements(EP.RND.LOGICAL_DEVICE_VK, vertexBuffer, &memRequirements);
+
+	VkPhysicalDeviceMemoryProperties memProperties;
+	vkGetPhysicalDeviceMemoryProperties(EP.RND.PHYSICAL_DEVICE_VK, &memProperties);
+
+	uint32_t memoryTypeIndex = 0;
+	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+		if ((memRequirements.memoryTypeBits & (1 << i)) &&
+			(memProperties.memoryTypes[i].propertyFlags &
+				(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) ==
+			(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
+			memoryTypeIndex = i;
+			break;
+		}
+	}
+
+	// Step 4: Allocate memory for the buffer
+	VkMemoryAllocateInfo memoryAllocateInfo = {};
+	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	memoryAllocateInfo.allocationSize = memRequirements.size;
+	memoryAllocateInfo.memoryTypeIndex = memoryTypeIndex;
+
+	VkDeviceMemory vertexBufferMemory;
+	vkAllocateMemory(EP.RND.LOGICAL_DEVICE_VK, &memoryAllocateInfo, nullptr, &vertexBufferMemory);
+
+	// Step 5: Bind the buffer to the memory
+	vkBindBufferMemory(EP.RND.LOGICAL_DEVICE_VK, vertexBuffer, vertexBufferMemory, 0);
+
+	// Step 6: Copy the vertex data into the buffer
+	void* rawData = nullptr;
+	vkMapMemory(EP.RND.LOGICAL_DEVICE_VK, vertexBufferMemory, 0, sizeof(vertexData), 0, &rawData);
+	float* mappedMemory = reinterpret_cast<float*>(rawData);
+	memcpy(mappedMemory, vertexData, sizeof(vertexData));
+	vkUnmapMemory(EP.RND.LOGICAL_DEVICE_VK, vertexBufferMemory);
+
+	vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+	// Step 7: Bind the vertex buffer to the graphics pipeline
+	VkDeviceSize offset = 0;
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, &offset);
+
+	// Step 8: Draw the vertices
+	//vkCmdDraw(commandBuffer, 4, 1, 0, 0);
+
+	vkCmdEndRenderPass(commandBuffer);
+
+	// Step 9: Destroy the vertex buffer and its memory
+	vkDestroyBuffer(EP.RND.LOGICAL_DEVICE_VK, vertexBuffer, nullptr);
+	vkFreeMemory(EP.RND.LOGICAL_DEVICE_VK, vertexBufferMemory, nullptr);
 
 
 
