@@ -1,5 +1,5 @@
 // TheWizard.cpp : This file contains the 'main' function. Program execution begins and ends there.
-// Hey there
+
 
 #include <winsock2.h>
 //#include <ws2tcpip.h>
@@ -60,88 +60,6 @@ struct engineThreads
 
 }THREAD;
 
-struct engineParameters
-{
-	struct FSTREAM
-	{
-		fstream gameLog;
-		fstream mapData;
-	}FSTR;
-
-	struct ANIMATION
-	{
-		int FIREBALL_RENDERSPEED = 500;
-
-	}ANIM;
-
-	struct GAMESYSTEM
-	{
-		LTimer physicsTimer;
-		LTimer physicsTimerMovement;
-		LTimer fpsTimer;
-		LTimer exitLoopTimer;
-		LTimer matchResultTimer;
-		int physicsRate = 5;
-		float DEFAULT_PROJ_SPEED = 15.0f;
-		SDL_Rect RESOLUTION_CLIP;
-
-	}GSYS;
-
-	struct BOOLEAN
-	{
-		bool removeClient = false;
-		bool addClient = false;
-		bool playerDamage = false;
-		bool injectProjectile = false;
-		bool renderCollisionBox = false;
-		bool isMatching = false;
-		bool inMatchingScreen = false;
-		bool exitCurrentLoop = false;
-		bool isSendThreadActive = false;
-		bool isPhysicsThreadActive = false;
-		bool isReciveThreadActive = false;
-		bool MATCH_RESULT_SCREEN = false;
-		bool INSERT_OBJECT = false;
-
-	}EXECUTE;
-	struct TEMPORAL
-	{
-		int projectileX;
-		int projectileY;
-		int	projectileDX;
-		int	projectileDY;
-		int gameFps;
-		int damageAmount;
-		int projIdentifier;
-		int matchingType;
-		bool MATCH_RESULT_WON = false;
-		int CAMERA_X;
-		int CAMERA_Y;
-		int MAP_OBJECT_ID;
-		int MOUSE_X;
-		int MOUSE_Y;
-
-		stringstream miscSS;
-		stringstream DATAPACKET;
-		stringstream DATAPACKET_DEFAULT;
-
-		SDL_Rect OBJECT_RECT;
-
-	
-	}TEMP;
-	struct RENDERING
-	{
-		VkInstance INSTANCE_VK = VK_NULL_HANDLE;
-		VkSurfaceKHR SURFACE_VK = VK_NULL_HANDLE;
-		VkPhysicalDevice PHYSICAL_DEVICE_VK = VK_NULL_HANDLE;
-		VkPhysicalDeviceProperties DEVICE_PROPERTIES_VK = {};
-		VkPhysicalDeviceFeatures DEVICE_FEATURES_VK = {};
-		VkDevice LOGICAL_DEVICE_VK = VK_NULL_HANDLE;
-		VkResult RESULT_VK = VK_SUCCESS;
-		VkSwapchainKHR SWAPCHAIN_VK = VK_NULL_HANDLE;
-	}RND;
-
-}EP;
 
 struct MEMEORY
 {
@@ -301,6 +219,98 @@ float scaleY = 1.7777f;
 int xLast = 0, yLast = 0;
 int projectileX, projectileY, projectileDX, projectileDY, velX = 0, velY = 0, animCollisionX, animCollisionY;
 bool collisionFound = false, addNewCollisionAnim = false;
+struct engineParameters
+{
+	struct FSTREAM
+	{
+		fstream gameLog;
+		fstream mapData;
+	}FSTR;
+
+	struct ANIMATION
+	{
+		int FIREBALL_RENDERSPEED = 500;
+
+	}ANIM;
+
+	struct GAMESYSTEM
+	{
+		LTimer physicsTimer;
+		LTimer physicsTimerMovement;
+		LTimer fpsTimer;
+		LTimer exitLoopTimer;
+		LTimer matchResultTimer;
+		int physicsRate = 5;
+		float DEFAULT_PROJ_SPEED = 15.0f;
+		SDL_Rect RESOLUTION_CLIP;
+
+	}GSYS;
+
+	struct BOOLEAN
+	{
+		bool removeClient = false;
+		bool addClient = false;
+		bool playerDamage = false;
+		bool injectProjectile = false;
+		bool renderCollisionBox = false;
+		bool isMatching = false;
+		bool inMatchingScreen = false;
+		bool exitCurrentLoop = false;
+		bool isSendThreadActive = false;
+		bool isPhysicsThreadActive = false;
+		bool isReciveThreadActive = false;
+		bool MATCH_RESULT_SCREEN = false;
+		bool INSERT_OBJECT = false;
+
+	}EXECUTE;
+	struct TEMPORAL
+	{
+		int projectileX;
+		int projectileY;
+		int	projectileDX;
+		int	projectileDY;
+		int gameFps;
+		int damageAmount;
+		int projIdentifier;
+		int matchingType;
+		bool MATCH_RESULT_WON = false;
+		int CAMERA_X;
+		int CAMERA_Y;
+		int MAP_OBJECT_ID;
+		int MOUSE_X;
+		int MOUSE_Y;
+
+		stringstream miscSS;
+		stringstream DATAPACKET;
+		stringstream DATAPACKET_DEFAULT;
+
+		SDL_Rect OBJECT_RECT;
+
+
+	}TEMP;
+	struct RENDERING
+	{
+		VkInstance INSTANCE_VK = VK_NULL_HANDLE;
+		VkSurfaceKHR SURFACE_VK = VK_NULL_HANDLE;
+		VkPhysicalDevice PHYSICAL_DEVICE_VK = VK_NULL_HANDLE;
+		VkPhysicalDeviceProperties DEVICE_PROPERTIES_VK = {};
+		VkPhysicalDeviceFeatures DEVICE_FEATURES_VK = {};
+		VkDevice LOGICAL_DEVICE_VK = VK_NULL_HANDLE;
+		VkResult RESULT_VK = VK_SUCCESS;
+		VkSwapchainKHR SWAPCHAIN_VK = VK_NULL_HANDLE;
+		VkQueue GRAPHICS_QUEUE_VK = VK_NULL_HANDLE;
+		VkQueue PRESENT_GRAPHICS_QUEUE_VK = VK_NULL_HANDLE;
+
+		VkExtent2D SWAPCHAIN_EXTENT = {};
+		VkRenderPassCreateInfo RENDER_PASS_INFO_VK = {};
+		VkRenderPass RENDER_PASS_VK = VK_NULL_HANDLE;
+		vector<VkFramebuffer> SWAPCHAIN_FRAMEBUFFER_VK;
+		VkPipeline GRAPHICS_PIPELINE_VK = VK_NULL_HANDLE;
+		VkBuffer VERTEX_BUFFER_VK = VK_NULL_HANDLE;
+
+	}RND;
+
+}EP;
 
 
 bool initVulkan();
@@ -322,6 +332,31 @@ VkInstance createVkInstance(SDL_Window* window);
 bool isDeviceSuitable(VkPhysicalDevice device);
 VkShaderModule createShaderModule(VkDevice device, const std::vector<char>& code);
 uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+void recordRenderCommands(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+
+void recordRenderCommands(VkCommandBuffer commandBuffer, uint32_t imageIndex)
+{
+	VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+	VkRenderPassBeginInfo renderPassInfo = {};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassInfo.renderPass = EP.RND.RENDER_PASS_VK;
+	renderPassInfo.framebuffer = EP.RND.SWAPCHAIN_FRAMEBUFFER_VK[imageIndex];
+	renderPassInfo.renderArea.offset = { 0, 0 };
+	renderPassInfo.renderArea.extent = EP.RND.SWAPCHAIN_EXTENT;
+	renderPassInfo.clearValueCount = 1;
+	renderPassInfo.pClearValues = &clearColor;
+
+	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, EP.RND.GRAPHICS_PIPELINE_VK);
+
+	VkDeviceSize offset = 0;
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &EP.RND.VERTEX_BUFFER_VK, &offset);
+
+	vkCmdDraw(commandBuffer, 4, 1, 0, 0);
+
+	vkCmdEndRenderPass(commandBuffer);
+}
 
 uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) 
 {
@@ -544,12 +579,15 @@ bool initVulkan()
 
 	// Choose a present mode
 	VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR; // Default to FIFO mode
-	for (const auto& mode : presentModes) {
-		if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
+	for (const auto& mode : presentModes) 
+	{
+		if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
+		{
 			presentMode = mode;
 			break;
 		}
-		else if (mode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
+		else if (mode == VK_PRESENT_MODE_IMMEDIATE_KHR)
+		{
 			presentMode = mode;
 		}
 	}
@@ -559,16 +597,16 @@ bool initVulkan()
 	VkSurfaceCapabilitiesKHR surfaceCapabilities;
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(EP.RND.PHYSICAL_DEVICE_VK, EP.RND.SURFACE_VK, &surfaceCapabilities);
 
-	VkExtent2D swapchainExtent;
+
 	if (surfaceCapabilities.currentExtent.width == UINT32_MAX) 
 	{
 		// If the surface size is undefined, set the size to the requested width and height
-		swapchainExtent.width = gWindow.getWidth();
-		swapchainExtent.height = gWindow.getHeight();
+		EP.RND.SWAPCHAIN_EXTENT.width = gWindow.getWidth();
+		EP.RND.SWAPCHAIN_EXTENT.height = gWindow.getHeight();
 	}
 	else {
 		// Otherwise, use the surface size as the swapchain size
-		swapchainExtent = surfaceCapabilities.currentExtent;
+		EP.RND.SWAPCHAIN_EXTENT = surfaceCapabilities.currentExtent;
 	}
 
 	// Determine the number of swapchain images
@@ -608,7 +646,7 @@ bool initVulkan()
 	swapchainCreateInfo.minImageCount = surfaceCapabilities.minImageCount + 1;
 	swapchainCreateInfo.imageFormat = surfaceFormat.format;
 	swapchainCreateInfo.imageColorSpace = surfaceFormat.colorSpace;
-	swapchainCreateInfo.imageExtent = swapchainExtent;
+	swapchainCreateInfo.imageExtent = EP.RND.SWAPCHAIN_EXTENT;
 	swapchainCreateInfo.imageArrayLayers = 1;
 	swapchainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 	swapchainCreateInfo.preTransform = surfaceCapabilities.currentTransform;
@@ -698,43 +736,46 @@ bool initVulkan()
 	subpass.colorAttachmentCount = 1;
 	subpass.pColorAttachments = &colorAttachmentRef;
 
-	VkRenderPassCreateInfo renderPassCreateInfo = {};
-	renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderPassCreateInfo.attachmentCount = 1;
-	renderPassCreateInfo.pAttachments = &colorAttachment;
-	renderPassCreateInfo.subpassCount = 1;
-	renderPassCreateInfo.pSubpasses = &subpass;
+	
+	EP.RND.RENDER_PASS_INFO_VK.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	EP.RND.RENDER_PASS_INFO_VK.attachmentCount = 1;
+	EP.RND.RENDER_PASS_INFO_VK.pAttachments = &colorAttachment;
+	EP.RND.RENDER_PASS_INFO_VK.subpassCount = 1;
+	EP.RND.RENDER_PASS_INFO_VK.pSubpasses = &subpass;
 
-	VkRenderPass renderPass;
-	result = vkCreateRenderPass(EP.RND.LOGICAL_DEVICE_VK, &renderPassCreateInfo, nullptr, &renderPass);
-	if (result != VK_SUCCESS) {
+	result = vkCreateRenderPass(EP.RND.LOGICAL_DEVICE_VK, &EP.RND.RENDER_PASS_INFO_VK, nullptr, &EP.RND.RENDER_PASS_VK);
+
+	if (result != VK_SUCCESS) 
+	{
 		// Handle render pass creation error
+		vkDestroySwapchainKHR(EP.RND.LOGICAL_DEVICE_VK, EP.RND.SWAPCHAIN_VK, nullptr);
+		cout << "RENDER PASS FAILED";
 		return result;
 	}
+	cout << endl << swapchainImageCount;
+	EP.RND.SWAPCHAIN_FRAMEBUFFER_VK.assign(swapchainImageCount, VK_NULL_HANDLE);
 
-	// Create a framebuffer for each swapchain image
-	std::vector<VkFramebuffer> swapchainFramebuffers(swapchainImageCount);
-	for (uint32_t i = 0; i < swapchainImageCount; i++) {
-		VkImageView attachments[] = {
-			swapchainImageViews[i]
-		};
+	for (uint32_t i = 0; i < swapchainImageCount; i++)
+	{
+
+		VkImageView attachments[] = {swapchainImageViews[i]};
 
 		VkFramebufferCreateInfo framebufferCreateInfo = {};
 		framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferCreateInfo.renderPass = renderPass;
+		framebufferCreateInfo.renderPass = EP.RND.RENDER_PASS_VK;
 		framebufferCreateInfo.attachmentCount = 1;
 		framebufferCreateInfo.pAttachments = attachments;
 		framebufferCreateInfo.width = gWindow.getWidth();
 		framebufferCreateInfo.height = gWindow.getHeight();
 		framebufferCreateInfo.layers = 1;
 
-		result = vkCreateFramebuffer(EP.RND.LOGICAL_DEVICE_VK, &framebufferCreateInfo, nullptr, &swapchainFramebuffers[i]);
+		result = vkCreateFramebuffer(EP.RND.LOGICAL_DEVICE_VK, &framebufferCreateInfo, nullptr, &EP.RND.SWAPCHAIN_FRAMEBUFFER_VK[i]);
 		if (result != VK_SUCCESS) {
 			// Handle framebuffer creation error
 			for (uint32_t j = 0; j < i; j++) {
-				vkDestroyFramebuffer(EP.RND.LOGICAL_DEVICE_VK, swapchainFramebuffers[j], nullptr);
+				//vkDestroyFramebuffer(EP.RND.LOGICAL_DEVICE_VK, EP.RND.SWAPCHAIN_FRAMEBUFFER_VK[j], nullptr);
 			}
-			vkDestroyRenderPass(EP.RND.LOGICAL_DEVICE_VK, renderPass, nullptr);
+			vkDestroyRenderPass(EP.RND.LOGICAL_DEVICE_VK, EP.RND.RENDER_PASS_VK, nullptr);
 			vkDestroySwapchainKHR(EP.RND.LOGICAL_DEVICE_VK, EP.RND.SWAPCHAIN_VK, nullptr);
 			return result;
 		}
@@ -901,12 +942,11 @@ bool initVulkan()
 	pipelineCreateInfo.pDepthStencilState = &depthStencil;
 	pipelineCreateInfo.pColorBlendState = &colorBlending;
 	pipelineCreateInfo.layout = pipelineLayout;
-	pipelineCreateInfo.renderPass = renderPass;
+	pipelineCreateInfo.renderPass = EP.RND.RENDER_PASS_VK;
 	pipelineCreateInfo.subpass = 0;
 	pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-	VkPipeline pipeline;
-	result = vkCreateGraphicsPipelines(EP.RND.LOGICAL_DEVICE_VK, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline);
+	result = vkCreateGraphicsPipelines(EP.RND.LOGICAL_DEVICE_VK, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &EP.RND.GRAPHICS_PIPELINE_VK);
 	if (result != VK_SUCCESS) {
 		// Handle pipeline creation error
 		vkDestroyPipelineLayout(EP.RND.LOGICAL_DEVICE_VK, pipelineLayout, nullptr);
@@ -950,17 +990,23 @@ bool initVulkan()
 	// Begin a render pass
 	VkRenderPassBeginInfo renderPassBeginInfo = {};
 	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassBeginInfo.renderPass = renderPass;
-	renderPassBeginInfo.framebuffer = swapchainFramebuffers.back();
+	renderPassBeginInfo.renderPass = EP.RND.RENDER_PASS_VK;
+	renderPassBeginInfo.framebuffer = EP.RND.SWAPCHAIN_FRAMEBUFFER_VK.back();
 	renderPassBeginInfo.renderArea.offset = { 0, 0 };
 	renderPassBeginInfo.renderArea.extent = {static_cast<unsigned int>(gWindow.getWidth()),static_cast<unsigned int>(gWindow.getHeight())};
 
 	VkClearValue clearValue = { 0.0f, 0.0f, 0.0f, 1.0f };
 	renderPassBeginInfo.clearValueCount = 1;
 	renderPassBeginInfo.pClearValues = &clearValue;
+	clearValue.color = { 1.0f, 0.0f, 0.0f, 1.0f }; // Red color
 
 	// Step 1: Allocate memory for vertex data
-	float vertexData[] = { 1, 2, 3, 4 };
+	float vertexData[] = {
+		-100.0f, -100.0f, 0.0f, 1.0f,
+		 100.0f, -100.0f, 0.0f, 1.0f,
+		 100.0f,  100.0f, 0.0f, 1.0f,
+		-100.0f,  100.0f, 0.0f, 1.0f
+	};
 
 	// Step 2: Create a buffer
 	VkBufferCreateInfo bufferCreateInfo = {};
@@ -969,12 +1015,11 @@ bool initVulkan()
 	bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 	bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	VkBuffer vertexBuffer;
-	vkCreateBuffer(EP.RND.LOGICAL_DEVICE_VK, &bufferCreateInfo, nullptr, &vertexBuffer);
+	vkCreateBuffer(EP.RND.LOGICAL_DEVICE_VK, &bufferCreateInfo, nullptr, &EP.RND.VERTEX_BUFFER_VK);
 
 	// Step 3: Allocate memory for the buffer
 	VkMemoryRequirements memRequirements;
-	vkGetBufferMemoryRequirements(EP.RND.LOGICAL_DEVICE_VK, vertexBuffer, &memRequirements);
+	vkGetBufferMemoryRequirements(EP.RND.LOGICAL_DEVICE_VK, EP.RND.VERTEX_BUFFER_VK, &memRequirements);
 
 	VkPhysicalDeviceMemoryProperties memProperties;
 	vkGetPhysicalDeviceMemoryProperties(EP.RND.PHYSICAL_DEVICE_VK, &memProperties);
@@ -1000,7 +1045,7 @@ bool initVulkan()
 	vkAllocateMemory(EP.RND.LOGICAL_DEVICE_VK, &memoryAllocateInfo, nullptr, &vertexBufferMemory);
 
 	// Step 5: Bind the buffer to the memory
-	vkBindBufferMemory(EP.RND.LOGICAL_DEVICE_VK, vertexBuffer, vertexBufferMemory, 0);
+	vkBindBufferMemory(EP.RND.LOGICAL_DEVICE_VK, EP.RND.VERTEX_BUFFER_VK, vertexBufferMemory, 0);
 
 	// Step 6: Copy the vertex data into the buffer
 	void* rawData = nullptr;
@@ -1013,19 +1058,87 @@ bool initVulkan()
 
 	// Step 7: Bind the vertex buffer to the graphics pipeline
 	VkDeviceSize offset = 0;
-	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, &offset);
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &EP.RND.VERTEX_BUFFER_VK, &offset);
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, EP.RND.GRAPHICS_PIPELINE_VK);
 
-	// Step 8: Draw the vertices
-	//vkCmdDraw(commandBuffer, 4, 1, 0, 0);
+	VkSemaphore semaphoreImageAvailable;
+	VkSemaphoreCreateInfo semaphoreCreateInfo = {};
+	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	if (vkCreateSemaphore(EP.RND.LOGICAL_DEVICE_VK, &semaphoreCreateInfo, nullptr, &semaphoreImageAvailable) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to create semaphore for image availability!");
+	}
 
-	vkCmdEndRenderPass(commandBuffer);
+	VkSemaphore semaphoreRenderingFinished;
+	result = vkCreateSemaphore(EP.RND.LOGICAL_DEVICE_VK, &semaphoreCreateInfo, nullptr, &semaphoreRenderingFinished);
+	if (result != VK_SUCCESS) {
+		// Handle semaphore creation error
+		cout << "Failed to create semaphore for rendering" << endl;
+	}
+	
+	vkGetDeviceQueue(EP.RND.LOGICAL_DEVICE_VK, graphicsQueueFamilyIndex, 0, &EP.RND.GRAPHICS_QUEUE_VK);
 
-	// Step 9: Destroy the vertex buffer and its memory
-	vkDestroyBuffer(EP.RND.LOGICAL_DEVICE_VK, vertexBuffer, nullptr);
-	vkFreeMemory(EP.RND.LOGICAL_DEVICE_VK, vertexBufferMemory, nullptr);
+	VkFenceCreateInfo fenceCreateInfo = {};
+	fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+	VkFence fenceRenderingFinished;
+	result = vkCreateFence(EP.RND.LOGICAL_DEVICE_VK, &fenceCreateInfo, nullptr, &fenceRenderingFinished);
+	if (result != VK_SUCCESS) {
+		// Handle fence creation error
+		cout << "Failed to create fence for rendering" << endl;
+	}
+
+	bool running = true;
+
+	while (running) 
+	{
+		// Acquire the next image from the swap chain
+		uint32_t imageIndex;
+		vkAcquireNextImageKHR(EP.RND.LOGICAL_DEVICE_VK, EP.RND.SWAPCHAIN_VK, UINT64_MAX, semaphoreImageAvailable, VK_NULL_HANDLE, &imageIndex);
+
+		// Record commands to the command buffer
+		vkResetCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+		VkCommandBufferBeginInfo beginInfo = {};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+		// Record the commands to render the scene
+		recordRenderCommands(commandBuffer, imageIndex);
+
+		// End the command buffer recording
+		vkEndCommandBuffer(commandBuffer);
 
 
+		// Submit the command buffer to the graphics queue
+		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+		VkSubmitInfo submitInfo = {};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = &semaphoreImageAvailable;
+		submitInfo.pWaitDstStageMask = waitStages;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &commandBuffer;
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &semaphoreRenderingFinished;
+		vkQueueSubmit(EP.RND.GRAPHICS_QUEUE_VK, 1, &submitInfo, VK_NULL_HANDLE);
 
+		// Wait for the fence to signal that rendering is complete
+		vkWaitForFences(EP.RND.LOGICAL_DEVICE_VK, 1, &fenceRenderingFinished, VK_TRUE, UINT64_MAX);
+		vkResetFences(EP.RND.LOGICAL_DEVICE_VK, 1, &fenceRenderingFinished);
+
+		// Present the image to the swap chain
+		VkPresentInfoKHR presentInfo = {};
+		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		presentInfo.waitSemaphoreCount = 1;
+		presentInfo.pWaitSemaphores = &semaphoreRenderingFinished;
+		presentInfo.swapchainCount = 1;
+		presentInfo.pSwapchains = &EP.RND.SWAPCHAIN_VK;
+		presentInfo.pImageIndices = &imageIndex;
+		vkQueuePresentKHR(EP.RND.PRESENT_GRAPHICS_QUEUE_VK, &presentInfo);
+
+	}
+	
 
 	return true;
 }
