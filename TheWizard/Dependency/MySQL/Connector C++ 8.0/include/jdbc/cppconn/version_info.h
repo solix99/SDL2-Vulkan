@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2.0, as
@@ -32,21 +32,15 @@
 
 #define MYCPPCONN_DM_MAJOR_VERSION 8
 #define MYCPPCONN_DM_MINOR_VERSION 0
-#define MYCPPCONN_DM_PATCH_VERSION 32
+#define MYCPPCONN_DM_PATCH_VERSION 17
 
-#define MYCPPCONN_DM_VERSION     "8.0.32"
-#define MYCPPCONN_DM_VERSION_ID  8000032
-
-#define MYSQL_CONCPP_VERSION_MAJOR   8
-#define MYSQL_CONCPP_VERSION_MINOR   0
-#define MYSQL_CONCPP_VERSION_MICRO   32
-
-#define MYSQL_CONCPP_VERSION_NUMBER  8000032
+#define MYCPPCONN_DM_VERSION     "8.00.0017"
+#define MYCPPCONN_DM_VERSION_ID  8000017
 
 
 /* Driver version info */
 
-#define MYCPPCONN_STATIC_MYSQL_VERSION     "8.0.32"
-#define MYCPPCONN_STATIC_MYSQL_VERSION_ID  80032
+#define MYCPPCONN_STATIC_MYSQL_VERSION     "8.0.17"
+#define MYCPPCONN_STATIC_MYSQL_VERSION_ID  80017
 
 #define MYCPPCONN_BOOST_VERSION            

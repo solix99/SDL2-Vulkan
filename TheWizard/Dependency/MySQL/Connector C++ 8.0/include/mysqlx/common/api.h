@@ -77,7 +77,6 @@
 
 #define MYSQLX_ABI_END(X,Y)   }}
 
-#define MYSQLX_ABI(X,Y) mysqlx::abi##X::r##Y
 
 #ifdef __cplusplus
 

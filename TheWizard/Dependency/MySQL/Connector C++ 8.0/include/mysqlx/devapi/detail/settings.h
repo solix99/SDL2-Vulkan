@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2.0, as
@@ -53,12 +53,11 @@ template <typename Traits>
 class Settings_detail
   : public common::Settings_impl
 {
-  using Value       = mysqlx::Value;
+  using Value       = common::Value;
   using Option      = typename Traits::Options;
   using COption     = typename Traits::COptions;
   using SSLMode     = typename Traits::SSLMode;
   using AuthMethod  = typename Traits::AuthMethod;
-  using CompressionMode = typename Traits::CompressionMode;
 
 public:
 
@@ -93,18 +92,13 @@ protected:
   static Value opt_val(int opt, Value &&val)
   {
     OPT_VAL_TYPE(CHECK_OPT)
-    return std::move(val);
+    return val;
   }
 
   /*
     For types which are not convertible to Value, but can be converted to string
     go through string conversion.
   */
-
-  static Value opt_val(int opt, std::nullptr_t)
-  {
-    return opt_val(opt, Value());
-  }
 
   template <
     typename V,
@@ -113,7 +107,8 @@ protected:
   >
   static Value opt_val(int opt, V &&val)
   {
-    return opt_val(opt, Value(string(val)));
+    OPT_VAL_TYPE(CHECK_OPT)
+    return string(val);
   }
 
   static Value opt_val(int opt, SSLMode m)
@@ -134,27 +129,18 @@ protected:
     return unsigned(m);
   }
 
-  static Value opt_val(int opt, CompressionMode m)
+  static Value opt_val(int opt, const DbDoc &doc)
   {
-    if (opt != Session_option_impl::COMPRESSION)
-      throw Error(
-        "SessionSettings::CompressionMode value can only be used on COMPRESSION setting."
-      );
-    return unsigned(m);
-  }
+    if (opt != Session_option_impl::CONNECTION_ATTRIBUTES)
+    {
+      std::stringstream err_msg;
+      err_msg << "Option " << option_name(opt) << " does not accept DbDoc object";
+      throw_error(err_msg.str().c_str());
+    }
 
-  // Note: is_range<C> is true for string types, which should not be treated
-  // as arrays of characters, but as single Values.
-
-  template <
-    typename C,
-    typename std::enable_if<is_range<C>::value>::type* = nullptr,
-    typename std::enable_if<!std::is_convertible<C,Value>::value>::type*
-      = nullptr
-  >
-  static Value opt_val(int , const C &container)
-  {
-    return Value(std::begin(container), std::end(container));
+    std::stringstream str_opts;
+    str_opts << doc;
+    return str_opts.str();
   }
 
   template<typename _Rep, typename _Period>
@@ -175,7 +161,6 @@ protected:
                  .count());
   }
 
-  // Handle values that are directly convertible to Value.
 
   template <
     typename V,
@@ -184,9 +169,10 @@ protected:
     typename std::enable_if<std::is_convertible<V,Value>::value>::type*
       = nullptr
   >
-  static Value opt_val(int opt, V &&val)
+  static Value opt_val(int, V &&val)
   {
-    return opt_val(opt, Value(val));
+    //ClientOptions are all bool or int, so convertible to int
+    return val;
   }
 
   using session_opt_val_t = std::pair<int, Value>;
@@ -200,9 +186,6 @@ protected:
   */
 
   void do_set(session_opt_list_t&&);
-
-  // Note: for ABI compatibility
-  void PUBLIC_API do_set(std::list<std::pair<int, common::Value>>&&);
 
   /*
     Templates that collect varargs list of options into opt_list_t list
@@ -248,6 +231,7 @@ protected:
     );
     return opts;
   }
+
 
   /*
     Note: Methods below rely on the fact that DevAPI SessionOption constants

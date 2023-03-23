@@ -50,7 +50,6 @@ namespace mysqlx {
 MYSQLX_ABI_BEGIN(2,0)
 namespace common {
 
-class Result_init;
 class Value;
 
 #define LOCK_MODE(X,N)  X = N,
@@ -65,6 +64,8 @@ enum class Lock_contention
   LOCK_CONTENTION_LIST(LOCK_CONTENTION)
 };
 
+
+class Result_init;
 
 /*
   Abstract interface for internal implementations of an executable object.
@@ -119,6 +120,7 @@ struct Executable_if
 struct Bind_if : public Executable_if
 {
   using string = std::string;
+  using Value = mysqlx::common::Value;
 
   // Add value for named parameter
 
@@ -197,6 +199,7 @@ template <class Base>
 struct Select_if : public Base
 {
   using string = std::string;
+  using Lock_mode = mysqlx::common::Lock_mode;
 
   // Set expression to select rows/documents.
 
@@ -246,6 +249,7 @@ struct Collection_remove_if : public Select_if<Sort_if>
 struct Collection_modify_if : public Select_if<Sort_if>
 {
   using string = std::string;
+  using Value = mysqlx::common::Value;
 
   enum Operation
   {
@@ -334,6 +338,7 @@ struct Table_remove_if : public Select_if<Sort_if>
 struct Table_update_if : public Table_remove_if
 {
   using string = std::string;
+  using Value = mysqlx::common::Value;
 
   virtual void add_set(const string&, const Value&) = 0;
   virtual void clear_modifications() = 0;

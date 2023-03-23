@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2.0, as
@@ -52,7 +52,7 @@
 
   @defgroup xapi_md  Meta data access
 
-  @defgroup xapi_diag     Diagnostics
+  @defgroup xapi_diag     Diganostics
   @}
 */
 
@@ -157,7 +157,6 @@ typedef object_id* MYSQLX_GUID;
 #define MYSQLX_ERROR_MISSING_TABLE_NAME_MSG "Missing table name"
 #define MYSQLX_ERROR_MISSING_VIEW_NAME_MSG "Missing view name"
 #define MYSQLX_ERROR_MISSING_COLLECTION_NAME_MSG "Missing collection name"
-#define MYSQLX_ERROR_MISSING_COLLECTION_OPT_MSG "Missing collection options"
 #define MYSQLX_ERROR_MISSING_VIEW_NAME_MSG "Missing view name"
 #define MYSQLX_ERROR_MISSING_KEY_NAME_MSG "Missing key name"
 #define MYSQLX_ERROR_MISSING_HOST_NAME "Missing host name"
@@ -226,14 +225,6 @@ typedef struct mysqlx_client_struct mysqlx_client_t;
 
 typedef struct mysqlx_session_options_struct mysqlx_session_options_t;
 
-/**
-  Type of handles for collection create/modify options.
-
-  @see mysqlx_collection_options_new(), mysqlx_collection_options_set(),
-  mysqlx_free().
-*/
-
-typedef struct mysqlx_collection_options_struct mysqlx_collection_options_t;
 
 /**
   Type of database schema handles.
@@ -390,8 +381,6 @@ mysqlx_client_opt_type_t;
   value of `SSL_MODE_VERIFY_CA` or `SSL_MODE_VERIFY_IDENTITY`.
   If `MYSQLX_OPT_SSL_MODE` is not explicitly given then setting
   `MYSQLX_OPT_SSL_CA` implies `SSL_MODE_VERIFY_CA`.
-
-  \anchor opt_session
 */
 
 typedef enum mysqlx_opt_type_enum
@@ -400,7 +389,6 @@ typedef enum mysqlx_opt_type_enum
 #define XAPI_OPT_ENUM_str(X,N)  MYSQLX_OPT_##X = N,
 #define XAPI_OPT_ENUM_num(X,N)  MYSQLX_OPT_##X = N,
 #define XAPI_OPT_ENUM_any(X,N)  MYSQLX_OPT_##X = N,
-#define XAPI_OPT_ENUM_bool(X,N)  MYSQLX_OPT_##X = N,
 
   SESSION_OPTION_LIST(XAPI_OPT_ENUM)
   MYSQLX_OPT_LAST
@@ -412,24 +400,15 @@ mysqlx_opt_type_t;
 #ifndef _WIN32
 #define OPT_SOCKET(A)   MYSQLX_OPT_SOCKET, (A)
 #endif //_WIN32
-#define OPT_DNS_SRV(A)  MYSQLX_OPT_DNS_SRV, (A)
 #define OPT_USER(A)     MYSQLX_OPT_USER, (A)
 #define OPT_PWD(A)      MYSQLX_OPT_PWD, (A)
 #define OPT_DB(A)       MYSQLX_OPT_DB, (A)
 #define OPT_SSL_MODE(A) MYSQLX_OPT_SSL_MODE, (A)
 #define OPT_SSL_CA(A)   MYSQLX_OPT_SSL_CA, (A)
-#define OPT_SSL_CAPATH(A)  MYSQLX_OPT_SSL_CAPATH, (A)
-#define OPT_SSL_CRL(A)      MYSQLX_OPT_SSL_CRL, (A)
-#define OPT_SSL_CRLPATH(A) MYSQLX_OPT_SSL_CRLPATH, (A)
 #define OPT_PRIORITY(A) MYSQLX_OPT_PRIORITY, (unsigned int)(A)
 #define OPT_AUTH(A)     MYSQLX_OPT_AUTH, (unsigned int)(A)
 #define OPT_CONNECT_TIMEOUT(A) MYSQLX_OPT_CONNECT_TIMEOUT, (unsigned int)(A)
 #define OPT_CONNECTION_ATTRIBUTES(A) MYSQLX_OPT_CONNECTION_ATTRIBUTES, (A)
-#define OPT_TLS_VERSIONS(A) MYSQLX_OPT_TLS_VERSIONS, (A)
-#define OPT_TLS_CIPHERSUITES(A) MYSQLX_OPT_TLS_CIPHERSUITES, (A)
-#define OPT_COMPRESSION(A) MYSQLX_OPT_COMPRESSION, (unsigned int)(A)
-#define OPT_COMPRESSION_ALGORITHMS(A) MYSQLX_OPT_COMPRESSION_ALGORITHMS, (const char*)(A)
-
 
 /**
   Session SSL mode values for use with `mysqlx_session_option_get()`
@@ -459,68 +438,6 @@ typedef enum mysqlx_auth_method_enum
 }
 mysqlx_auth_method_t;
 
-/**
-  Collection create/modify options
-
-  \anchor opt_collection
-*/
-
-typedef enum mysqlx_collection_opt_enum
-{
-
-#define XAPI_COLLECTION_OPT_ENUM(X,N)  MYSQLX_OPT_COLLECTION_##X = N,
-
-  COLLECTION_OPTIONS_OPTION(XAPI_COLLECTION_OPT_ENUM)
-  MYSQLX_OPT_COLLECTION_LAST
-}
-mysqlx_collection_opt_t;
-
-/**
-  Collection validation options
-
-  \anchor opt_collection_validation
-*/
-
-typedef enum mysqlx_collection_validation_opt_enum
-{
-
-#define XAPI_COLLECTION_VALIDATION_OPT_ENUM(X,N)  MYSQLX_OPT_COLLECTION_VALIDATION_##X = 1024+N,
-
-  COLLECTION_VALIDATION_OPTION(XAPI_COLLECTION_VALIDATION_OPT_ENUM)
-  MYSQLX_OPT_COLLECTION_VALIDATION_LAST
-}
-mysqlx_collection_validation_opt_t;
-
-/**
-  Collection validation level options
-  \anchor opt_collection_validation_level
-*/
-
-typedef enum mysqlx_collection_validation_level_enum
-{
-
-#define XAPI_COLLECTION_VALIDATION_LEVEL_ENUM(X,N)  MYSQLX_OPT_COLLECTION_VALIDATION_LEVEL_##X = 2048+N,
-
-  COLLECTION_VALIDATION_LEVEL(XAPI_COLLECTION_VALIDATION_LEVEL_ENUM)
-  MYSQLX_OPT_COLLECTION_VALIDATION_LEVEL_LAST
-}
-mysqlx_collection_validation_level_t;
-
-#define VALIDATION_OFF MYSQLX_OPT_COLLECTION_VALIDATION_LEVEL_OFF
-#define VALIDATION_STRICT MYSQLX_OPT_COLLECTION_VALIDATION_LEVEL_STRICT
-
-#define OPT_COLLECTION_REUSE(X) MYSQLX_OPT_COLLECTION_REUSE, (unsigned int)X
-#define OPT_COLLECTION_VALIDATION(X) MYSQLX_OPT_COLLECTION_VALIDATION, (const char*)X
-#define OPT_COLLECTION_VALIDATION_LEVEL(X) MYSQLX_OPT_COLLECTION_VALIDATION_LEVEL, (unsigned int)X
-#define OPT_COLLECTION_VALIDATION_SCHEMA(X) MYSQLX_OPT_COLLECTION_VALIDATION_SCHEMA, (const char*)X
-
-typedef enum mysqlx_compression_mode_enum
-{
-#define XAPI_COMPRESSION_ENUM(X,N)  MYSQLX_COMPRESSION_##X = N,
-
-  COMPRESSION_MODE_LIST(XAPI_COMPRESSION_ENUM)
-}
-mysqlx_compression_mode_t;
 
 /**
   Constants for defining the row locking options for
@@ -559,7 +476,7 @@ mysqlx_lock_contention_t;
   Create a client instance using connection string or URL and a client options
   JSON.
 
-  Connection sting has the form `"user:pass@host:port/?option&option"`,
+  Connection sting has the form `"user:pass\@host:port/?option&option"`,
   valid URL is like a connection string with a `mysqlx://` prefix. Host is
   specified as either DNS name, IPv4 address of the form "nn.nn.nn.nn" or
   IPv6 address of the form "[nn:nn:nn:...]".
@@ -682,9 +599,6 @@ mysqlx_get_client_from_options(mysqlx_session_options_t *opt,
   Sessions created by this client are closed, but their resources are not freed.
   `mysqlx_session_close()` has to be called to prevent memory leaks.
 
-  After a call to this function the given client handle becomes invalid.
-  Any attempt to use the handle after this, results in undefined behavior.
-
 
   @param client client handle
 
@@ -702,7 +616,7 @@ PUBLIC_API void mysqlx_client_close(mysqlx_client_t *client);
 /**
   Create a new session
 
-  @param cli        client pool to get session from
+  @param client     client pool to get session from
   @param[out] error if error happens during connect the error object
                     is returned through this parameter
 
@@ -747,6 +661,18 @@ mysqlx_get_session(const char *host, int port, const char *user,
 /**
   Create a session using connection string or URL.
 
+  Connection sting has the form `"user:pass\@host:port/?option&option"`,
+  valid URL is like a connection string with a `mysqlx://` prefix. Host is
+  specified as either DNS name, IPv4 address of the form "nn.nn.nn.nn" or
+  IPv6 address of the form "[nn:nn:nn:...]".
+
+  Possible connection options are:
+
+  - `ssl-mode` : TLS connection mode
+  - `ssl-ca=`path : path to a PEM file specifying trusted root certificates
+
+  Specifying `ssl-ca` option implies `ssl-mode=VERIFY_CA`.
+
   @param conn_string  connection string
   @param[out] error   if error happens during connect the error object
                       is returned through this parameter
@@ -754,68 +680,6 @@ mysqlx_get_session(const char *host, int port, const char *user,
   @return session handle if session could be created, otherwise NULL
   is returned and the error information is returned through
   the error output parameter.
-
-
-  Connection sting has the form
-
-        "user:pass@connection-data/db?option&option"
-
-  with optional `mysqlx://` prefix.
-
-  The `connetction-data` part is either a single host address or a coma
-  separated list of hosts in square brackets: `[host1, host2, ..., hostN]`.
-  In the latter case the connection fail-over logic will be used when
-  creating the session.
-
-  A single host address is either a DNS host name, an IPv4 address of
-  the form `nn.nn.nn.nn` or an IPv6 address of the form `[nn:nn:nn:...]`.
-  On Unix systems a host can be specified as a path to a Unix domain
-  socket - this path must start with `/` or `.`.
-
-  Characters like `/` in the connection data, which otherwise have a special
-  meaning inside a connection string, must be represented using percent
-  encoding (e.g., `%2F` for `/`). Another option is to enclose a host name or
-  a socket path in round braces. For example, one can write
-
-      "mysqlx://(./path/to/socket)/db"
-
-  instead of
-
-      "mysqlx://.%2Fpath%2Fto%2Fsocket/db"
-
-  To specify priorities for hosts in a multi-host settings, use list of pairs
-  of the form `(address=host,priority=N)`. If priorities are specified, they
-  must be given to all hosts in the list.
-
-  The optional `db` part of the connection string defines the default schema
-  of the session.
-
-  Possible connection options are:
-
-  - `ssl-mode=...` : see `#MYSQLX_OPT_SSL_MODE`; the value is a case insensitive
-                     name of the SSL mode
-  - `ssl-ca=...` : see `#MYSQLX_OPT_SSL_CA`
-  - `auth=...`: see `#MYSQLX_OPT_AUTH`; the value is a case insensitive name of
-                the authentication method
-  - `connect-timeout=...`: see `#MYSQLX_OPT_CONNECT_TIMEOUT`
-  - `connection-attributes=[...]` : see `#MYSQLX_OPT_CONNECTION_ATTRIBUTES`
-    but the key-value pairs are not given by a JSON document but as a list;\n
-    Examples:\n
-    `"mysqlx://user@host?connection-attributes=[foo=bar,qux,baz=]"` -
-      specify additional attributes to be sent\n
-    `"mysqlx://user@host?connection-attributes=false"` -
-      send no connection attributes\n
-    `"mysqlx://user@host?connection-attributes=true"` -
-      send default connection attributes\n
-    `"mysqlx://user@host?connection-attributes=[]"` -
-      the same as setting to `true`\n
-    `"mysqlx://user@host?connection-attributes"` -
-      the same as setting to `true`\n
-  - `tls-versions=[...]` : see `#MYSQLX_OPT_TLS_VERSIONS`
-  - `tls-ciphersuites=[...]` : see `#MYSQLX_OPT_TLS_CIPHERSUITES`
-  - `compression=...` : see `#MYSQLX_OPT_COMPRESSION`
-  - `compression-algorithms=[...]` : see `#MYSQLX_OPT_COMPRESSION_ALGORITHMS`
-
 
   @note The session returned by the function must be properly closed using
         `mysqlx_session_close()`.
@@ -861,9 +725,6 @@ mysqlx_get_session_from_options(mysqlx_session_options_t *opt,
   Closing session frees all related resources, including those
   allocated by statements and results belonging to the session.
 
-  After a call to this function the given session handle becomes invalid.
-  Any attempt to use the handle after this, results in undefined behavior.
-
   @param session session handle
 
   @ingroup xapi_sess
@@ -881,10 +742,6 @@ PUBLIC_API void mysqlx_session_close(mysqlx_session_t *session);
 
   @note The function checks only the internal session status without
     communicating with server(s).
-
-  @note This function cannot be called for a session that was closed,
-    because in this case the session handle itself is invalid and
-    cannot be used in API calls.
 
   @ingroup xapi_sess
 */
@@ -1049,7 +906,7 @@ mysqlx_get_collection(mysqlx_schema_t *schema, const char *col_name,
 
   @param sess session handle
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
 
   @note a statement will belong to the transaction when
         it is actually executed after the transaction began (and before
@@ -1068,7 +925,7 @@ mysqlx_transaction_begin(mysqlx_session_t *sess);
 
   @param sess session handle
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
 
   @note This will commit all statements that were executed as part of this
         transaction, regardless of when the statements were created (see
@@ -1086,7 +943,7 @@ mysqlx_transaction_commit(mysqlx_session_t *sess);
 
   @param sess session handle
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
 
   @note This will roll back all statements that were executed as part of this
         transaction, regardless of when the statements were created (see
@@ -1128,7 +985,7 @@ mysqlx_savepoint_set( mysqlx_session_t *sess, const char *name);
   @param name savepoint name to be released
 
   @return `RESULT_OK` - savepoint exists and is released;
-          `RESULT_ERROR` - on error
+          `RESULT_ERR` - on error
 
   @ingroup xapi_sess
 */
@@ -1145,7 +1002,7 @@ mysqlx_savepoint_release(mysqlx_session_t *sess, const char *name);
   @param name savepoint name.
 
   @return `RESULT_OK` - savepoint exists and is released;
-          `RESULT_ERROR` - on error.
+          `RESULT_ERR` - on error.
 
   @ingroup xapi_sess
 */
@@ -1185,41 +1042,39 @@ PUBLIC_API void mysqlx_free_options(mysqlx_session_options_t *opt);
 /**
   Set session configuration options.
 
-  @param opth   handle to session configuration data object
-  @param   ...  variable parameters list consisting of (option, value) pairs
-          terminated by `PARAM_END`.
+  @param opt   handle to session configuration data object
+  @param   ...  variable parameters list consisting of (type, value) pairs
+          terminated by `PARAM_END`: type_id1, value1, type_id2, value2, ...,
+          type_id_n, value_n, `PARAM_END` (`PARAM_END` marks the end of
+          the parameters list).
+
+           type_id is the numeric identifier, which helps to determine the type
+           of the value provided as the next parameter. The user code must
+           ensure that type_id corresponds to the actual value type. Otherwise,
+           the value along with and all sequential types and values are most
+           likely to be corrupted.
+           Allowed types are listed in `mysqlx_opt_type_t` enum.
+           The X DevAPI for C defines the convenience macros that help to specify
+           the types and values: See `OPT_HOST()`, `OPT_PORT()`, `OPT_USER()`,
+           `OPT_PWD()`, `OPT_DB()`, `OPT_SSL_MODE()`, `OPT_SSL_CA()`,
+           `OPT_PRIORITY()`.
 
   @return `RESULT_OK` if option was successfully set; `RESULT_ERROR`
           is set otherwise (use `mysqlx_error()` to get the error
           information)
 
-  The variable parameter list is of the form
-
-      OPT_O1(val1), OPT_O2(val2), ..., OPT_On(valn), PARAM_END
-
-  or, equivalently,
-
-      MYSQLX_OPT_O1, val1, ..., MYSQLX_OPT_On, valn, PARAM_END
-
-  Possible options are defined by enumeration
-  \ref opt_session "mysqlx_opt_type_t". Type of option value `vali` (number,
-  string, etc.) must match the option `MYSQLX_OPT_Oi`, otherwise this value
-  along with all the sequential options and values are most likely
-  to be corrupted.
-
   @ingroup xapi_sess
 */
 
 PUBLIC_API int
-mysqlx_session_option_set(mysqlx_session_options_t *opth, ...);
+mysqlx_session_option_set(mysqlx_session_options_t *opt, ...);
 
 
 /**
   Read session configuration options.
 
-  @param opth  handle to session configuration data object
-  @param opt   option whose value to read (see
-               \ref opt_session "mysqlx_opt_type_t")
+  @param opt   handle to session configuration data object
+  @param type  option type to get (see `mysqlx_opt_type_t` enum)
   @param[out] ...  pointer to a buffer where to return the requested
                    value
 
@@ -1242,7 +1097,7 @@ mysqlx_session_option_set(mysqlx_session_options_t *opth, ...);
 */
 
 PUBLIC_API int
-mysqlx_session_option_get(mysqlx_session_options_t *opth, int opt,
+mysqlx_session_option_get(mysqlx_session_options_t *opt, int type,
                           ...);
 
 /*
@@ -1351,7 +1206,7 @@ mysqlx_sql_new(mysqlx_session_t *sess, const char *query,
   @param[out] count the number of documents in a given collection
           is returned through the parameter
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
 
   @ingroup xapi_coll
 */
@@ -1523,7 +1378,7 @@ mysqlx_collection_modify_patch(mysqlx_collection_t *collection,
          interpreted like a JSON documents, but values of fields are
          interpreted as expressions
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
   @ingroup xapi_coll
 */
 
@@ -1568,7 +1423,7 @@ mysqlx_collection_find_new(mysqlx_collection_t *collection);
     in the projection can refer to fields in the original document
     using `$.path.to.field` syntax.
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
 
   @note This function can be only called for the collection FIND statements
   @see mysqlsx_collection_find_new()
@@ -1675,7 +1530,7 @@ mysqlx_collection_add_new(mysqlx_collection_t *collection);
 
   @param stmt statement handle
   @param json_doc - the JSON string describing document to add
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
 
   @note Each new call provides the values for the new document, which
     can be used for multi-document add operations.
@@ -1779,7 +1634,7 @@ mysqlx_collection_modify_new(mysqlx_collection_t *collection);
   @note For the convenience the code can use `PARAM_TTT(val)` macros
         instead of (`MYSQLX_TYPE_TTT`, value) pairs (see `mysqlx_stmt_bind()`).
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
 
   @ingroup xapi_coll
 */
@@ -1796,7 +1651,7 @@ mysqlx_set_modify_set(mysqlx_stmt_t *stmt, ...);
         entry in this list is a character string.
         The list is terminated by `PARAM_END`.
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
 
   @ingroup xapi_coll
 */
@@ -1819,7 +1674,7 @@ mysqlx_set_modify_unset(mysqlx_stmt_t *stmt, ...);
   @note For the convenience the code can use `PARAM_TTT(val)` macros
         instead of (`MYSQLX_TYPE_TTT`, value) pairs (see `mysqlx_stmt_bind()`).
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
 
   @ingroup xapi_coll
 */
@@ -1842,7 +1697,7 @@ mysqlx_set_modify_array_insert(mysqlx_stmt_t *stmt, ...);
   @note For the convenience the code can use `PARAM_TTT(val)` macros
         instead of (`MYSQLX_TYPE_TTT`, value) pairs (see `mysqlx_stmt_bind()`).
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
 
   @ingroup xapi_coll
 */
@@ -1858,7 +1713,7 @@ mysqlx_set_modify_array_append(mysqlx_stmt_t *stmt, ...);
   @param ... list of paths to array elements that should be deleted from their
         arrays. The list is terminated by `PARAM_END`.
 
-   @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+   @return `RESULT_OK` - on success; `RESULT_ERR` - on error
 
    @ingroup xapi_coll
 */
@@ -1890,7 +1745,7 @@ PUBLIC_API int mysqlx_set_modify_array_delete(mysqlx_stmt_t *stmt, ...);
   @param[out] count  the number of rows in a given table is returned
                      through the parameter
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
 
   @ingroup xapi_coll
 */
@@ -2161,7 +2016,7 @@ mysqlx_table_insert_new(mysqlx_table_t *table);
   @param stmt statement handle
   @param ...  variable parameters list consisting of column names; the list is
               terminated by PARAM_END.
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
 
   @note Each new call clears the list of column for a given statement
         if it was set earlier.
@@ -2190,7 +2045,7 @@ mysqlx_set_insert_columns(mysqlx_stmt_t *stmt, ...);
           For MYSQLX_TYPE_BYTES the function will expect three parameters
           instead of two as for all other types:
           <MYSQLX_TYPE_BYTES, (void*)byte_data, (size_t)length>
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
 
   @note Each new call provides the row values for the new row, which
         can be used for multi-row inserts
@@ -2294,7 +2149,7 @@ mysqlx_table_update_new(mysqlx_table_t *table);
           instead of three as for all other types:
           <column_name, `MYSQLX_TYPE_BYTES`, (void*)byte_data, (size_t)length>
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
 
   @note The `param` list must be not empty, otherwise error is reported.
 
@@ -2407,7 +2262,7 @@ mysqlx_execute(mysqlx_stmt_t *stmt);
            `PARAM_DOUBLE()`, `PARAM_STRING()`, `PARAM_BYTES()`, `PARAM_EXPR()`
            for different data types instead of (`MYSQLX_TYPE_TTT`, value) pairs.
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
 
   @note Each new call resets the binds set by the previous call to
         `mysqlx_stmt_bind()`
@@ -2432,7 +2287,7 @@ PUBLIC_API int mysqlx_stmt_bind(mysqlx_stmt_t *stmt, ...);
           containing expressions: proj_1, ..., proj_n, PARAM_END
           (PARAM_END marks the end of projection's item list)
 
-   @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+   @return `RESULT_OK` - on success; `RESULT_ERR` - on error
 
    @note This function can be only called for table SELECT statements
    @see mysqlx_table_select_new()
@@ -2459,7 +2314,7 @@ PUBLIC_API int mysqlx_set_items(mysqlx_stmt_t *stmt, ...);
   @param where_expr character string containing Boolean expression
                     like in SQL WHERE clause
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
 
   @note this function can be be used directly, but for the convenience
         the code can use the specialized macros for a specific operation.
@@ -2490,7 +2345,7 @@ PUBLIC_API int mysqlx_set_where(mysqlx_stmt_t *stmt, const char *where_expr);
   @param having_expr character string containing Boolean expression
                      like in SQL HAVING clause
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
 
   @note this function can be be used directly, but for the convenience
         the code can use the specialized macros for a specific operation.
@@ -2519,7 +2374,7 @@ PUBLIC_API int mysqlx_set_having(mysqlx_stmt_t *stmt, const char *having_expr);
   expr_1, ..., expr_n, PARAM_END
   (PARAM_END marks the end of projection's item list)
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
 
   @note this function can be be used directly, but for the convenience
         the code can use the specialized macros for a specific operation.
@@ -2552,7 +2407,7 @@ PUBLIC_API int mysqlx_set_group_by(mysqlx_stmt_t *stmt, ...);
           strings because the empty string "" or NULL will be treated
           as the end of sequence
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
 
   @note this function can be be used directly, but for the convenience
         the code can use the specialized macros for a specific operation.
@@ -2585,7 +2440,7 @@ PUBLIC_API int mysqlx_set_order_by(mysqlx_stmt_t *stmt, ...);
   @param row_count the number of result rows to return
   @param offset the number of rows to skip before starting counting
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
 
   @note this function can be be used directly, but for the convenience
         the code can use the specialized macros for a specific operation.
@@ -2620,7 +2475,7 @@ mysqlx_set_limit_and_offset(mysqlx_stmt_t *stmt, uint64_t row_count,
   @param contention the integer locking contention
          (see ::mysqlx_lock_contention_t).
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
 
   @note this function can be be used directly, but for the convenience
         the code can use the specialized macros for a specific operation.
@@ -2641,9 +2496,6 @@ mysqlx_set_row_locking(mysqlx_stmt_t *stmt, int locking, int contention);
 
   After calling this function on a handle it becomes invalid and
   should not be used any more.
-
-  @note This function should not be called on a client or session handle
-        - use `mysqlx_client_close()` or `mysqlx_session_close()` instead.
 
   @note Statement, result, schema, collection, table and some error
         handles are also freed automatically when the session is closed.
@@ -2722,7 +2574,7 @@ PUBLIC_API const char * mysqlx_json_fetch_one(mysqlx_result_t *res, size_t *out_
   @param res result handle
 
   @return `RESULT_OK` - on success; `RESULT_NULL` when there is no more results;
-          `RESULT_ERROR` - on error
+          `RESULT_ERR` - on error
 
   @ingroup xapi_res
 */
@@ -2759,9 +2611,9 @@ mysqlx_get_affected_count(mysqlx_result_t *res);
   @param result result handle
   @param[out] num number of records buffered. Zero is never returned. If the
               number of records to buffer is zero the function returns
-              `RESULT_ERROR`
+              `RESULT_ERR`
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error. If the error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error. If the error
           occurred it can be retrieved by `mysqlx_error()` function.
 
   @note Even in case of an error some rows/documents might be buffered if they
@@ -2786,7 +2638,7 @@ mysqlx_store_result(mysqlx_result_t *result, size_t *num);
   @param result result handle
   @param[out] num number of records buffered.
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error. If the error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error. If the error
           occurred it can be retrieved by `mysqlx_error()` function.
 
   @note Even in case of an error some rows/documents might be buffered if they
@@ -2847,35 +2699,6 @@ mysqlx_get_auto_increment_value(mysqlx_result_t *res);
 /**
   Read bytes stored in a row into a pre-allocated buffer
 
-  The raw bytes are as received from the server. In genral the value
-  is represented using x-protocol encoding that corresponds to the
-  type and other meta-data of the given column. This information can
-  be obtained from `mysqlx_column_get_type()` and other
-  `mysqlx_column_get_*()` functions.
-
-  The x-protocol represenation of different value types is documented
-  [here]
-  (https://dev.mysql.com/doc/dev/mysql-server/latest/structMysqlx_1_1Resultset_1_1ColumnMetaData.html).
-  Most types in the #mysqlx_data_type_t enumeration correspond
-  to an x-protocol value type of the same name.
-
-  STRING values are encoded using the character set encoding as reported by
-  mysqlx_column_get_collation() function.
-
-  JSON data is represented as a JSON string. ENUM values are represented
-  as strings with enum constant names. Values of type TIMESTAMP use
-  the same representation as DATETIME. GEOMETRY values use the internal
-  geometry storage format described
-  [here]
-  (https://dev.mysql.com/doc/refman/8.0/en/gis-data-formats.html).
-
-  Types BOOL and EXPR are never reported for data received from server
-  -- they are used when sending data to the server.
-
-  Note that raw representation of BYTES and STRING values has an extra
-  0x00 byte added at the end, which is not part of the originial data.
-  It is used to distinguish null values from empty byte sequences.
-
   @param row row handle
   @param col zero-based column number
   @param offset the number of bytes to skip before reading them from source row
@@ -2887,7 +2710,7 @@ mysqlx_get_auto_increment_value(mysqlx_result_t *res);
   @return `RESULT_OK` - on success; `RESULT_NULL` when the value in the
           requested column is NULL; `RESULT_MORE_DATA` if not all data was
           fetched after the last call to the function;
-          `RESULT_ERROR` - on error
+          `RESULT_ERR` - on error
 
   @ingroup xapi_res
 */
@@ -2910,7 +2733,7 @@ mysqlx_get_bytes(mysqlx_row_t* row, uint32_t col,
                   type in which to write the data
 
   @return `RESULT_OK` - on success; `RESULT_NULL` when the column is NULL;
-          `RESULT_ERROR` - on error
+          `RESULT_ERR` - on error
 
   @ingroup xapi_res
 */
@@ -2932,7 +2755,7 @@ mysqlx_get_uint(mysqlx_row_t* row, uint32_t col, uint64_t* val);
               type in which to write the data
 
   @return `RESULT_OK` - on success; `RESULT_NULL` when the column is NULL;
-          `RESULT_ERROR` - on error
+          `RESULT_ERR` - on error
 
   @ingroup xapi_res
 */
@@ -2954,7 +2777,7 @@ mysqlx_get_sint(mysqlx_row_t* row, uint32_t col, int64_t* val);
               type in which to write the data
 
   @return `RESULT_OK` - on success; `RESULT_NULL` when the column is NULL;
-          `RESULT_ERROR` - on error
+          `RESULT_ERR` - on error
 
   @ingroup xapi_res
 */
@@ -2976,7 +2799,7 @@ mysqlx_get_float(mysqlx_row_t* row, uint32_t col, float* val);
                   type in which to write the data.
 
   @return `RESULT_OK` - on success; `RESULT_NULL` when the column is NULL;
-          `RESULT_ERROR` - on error
+          `RESULT_ERR` - on error
 
   @ingroup xapi_res
 */
@@ -3210,7 +3033,7 @@ mysqlx_column_get_catalog(mysqlx_result_t *res, uint32_t pos);
   @param sess session handle
   @param schema the name of the schema to be created
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
           The error handle can be obtained from the session
           using `mysqlx_error()` function.
 
@@ -3227,7 +3050,7 @@ mysqlx_schema_create(mysqlx_session_t *sess, const char *schema);
   @param sess session handle
   @param schema the name of the schema to be dropped
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
           The error handle can be obtained from the session
           using `mysqlx_error()` function.
 
@@ -3244,7 +3067,7 @@ mysqlx_schema_drop(mysqlx_session_t *sess, const char *schema);
   @param schema schema handle
   @param collection collection name to create
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
           The error handle can be obtained from the session
           using `mysqlx_error()` function.
 
@@ -3256,143 +3079,12 @@ mysqlx_collection_create(mysqlx_schema_t *schema, const char *collection);
 
 
 /**
-  Allocate a new create/modify collection options data.
-
-  @return collection create/modify options handle
-
-  @note The session returned by the function must be properly freed using
-        `mysqlx_free()`.
-
-  @ingroup xapi_ddl
-*/
-
-PUBLIC_API mysqlx_collection_options_t *
-mysqlx_collection_options_new();
-
-
-/**
-  Set collection options.
-  @param options	handle created by mysqlx_collection_options_new() function
-  @param ...  variable parameters list consisting of (option, value) pairs
-          terminated by `PARAM_END`.
-
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
-          The error handle can be obtained from the options
-          using `mysqlx_error()` function.
-
-  The variable parameter list is of the form
-
-      OPT_COLLECTION_O1(val1), OPT_COLLECTION_O2(val2), ..., PARAM_END
-
-  or, equivalently,
-
-      MYSQLX_OPT_COLLECTION_O1, val1, MYSQLX_OPT_COLLECTION_02, val2,...,
-  PARAM_END
-
-  Possible options are defined by enumerations
-  \ref opt_collection "mysqlx_collection_opt_t" and
-  \ref opt_collection_validation "mysqlx_collection_validation_opt_t".
-  Type of option value `vali` (number, string, etc.) must match the option
-  `MYSQLX_OPT_COLLECTION_Oi`, otherwise this value  along with all the
-  sequential options and values are most likely to be corrupted.
-
-  @ingroup xapi_ddl
-*/
-
-PUBLIC_API int
-mysqlx_collection_options_set(mysqlx_collection_options_t * options,...);
-
-
-/**
-  Create a new collection in a specified schema
-
-  @param schema schema handle
-  @param collection collection name to create
-  @param options handle created by mysqlx_collection_options_new() function
-
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
-          The error handle can be obtained from the session
-          using `mysqlx_error()` function.
-
-  @ingroup xapi_ddl
-*/
-
-PUBLIC_API int
-mysqlx_collection_create_with_options(mysqlx_schema_t *schema,
-                                      const char *collection,
-                                      mysqlx_collection_options_t *options);
-
-/**
-  Create a new collection in a specified schema
-
-  @param schema schema handle
-  @param collection collection name to create
-  @param json_options json with options:
-  ~~~~~~
-  {
-    "reuseExisting": true,
-    "validation":
-    {
-      "level": "Strict",
-      "schema":
-      {
-        "id": "http://json-schema.org/geo",
-        "$schema": "http://json-schema.org/draft-06/schema#",
-        "description": "A geographical coordinate",
-        "type": "object",
-        "properties":
-        {
-          "latitude":
-          {
-            "type": "number"
-          },
-          "longitude":
-          {
-            "type": "number"
-          }
-        },
-        "required": ["latitude", "longitude"]
-        }
-      }
-    }
-  }
-  ~~~~~~
-
-  Document keys:
-  - `reuseExisting` : Same as @ref opt_collection "MYSQLX_OPT_COLLECTION_REUSE";
-  - `validation` : Same as @ref opt_collection "MYSQLX_OPT_COLLECTION_VALIDATION";
-
-
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
-          The error handle can be obtained from the session
-          using `mysqlx_error()` function.
-
-  @ingroup xapi_ddl
-*/
-PUBLIC_API int
-mysqlx_collection_create_with_json_options(mysqlx_schema_t *schema,
-                                           const char *collection,
-                                           const char* json_options);
-
-PUBLIC_API int
-mysqlx_collection_modify_with_options(mysqlx_schema_t *schema,
-                                      const char *collection,
-                                      mysqlx_collection_options_t *options);
-
-PUBLIC_API int
-mysqlx_collection_modify_with_json_options(mysqlx_schema_t *schema,
-                                           const char* collection,
-                                           const char* json_options);
-
-
-
-/**
   Drop an existing collection in a specified schema
 
   @param schema schema handle
   @param collection collection name to drop
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
           The error handle can be obtained from the session
           using `mysqlx_error()` function
 
@@ -3507,7 +3199,7 @@ mysqlx_result_next_warning(mysqlx_result_t *res);
   @see @ref indexing for information on how to define document
   collection indexes.
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
   The error handle can be obtained from the collection
   using `mysqlx_error()` function.
 
@@ -3527,7 +3219,7 @@ mysqlx_collection_create_index(mysqlx_collection_t *coll, const char *name,
   @param coll collection whose index should be dropped
   @param name name of the index to be dropped
 
-  @return `RESULT_OK` - on success; `RESULT_ERROR` - on error
+  @return `RESULT_OK` - on success; `RESULT_ERR` - on error
   The error handle can be obtained from the collection
   using `mysqlx_error()` function.
 

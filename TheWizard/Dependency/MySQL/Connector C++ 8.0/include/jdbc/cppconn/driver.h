@@ -35,7 +35,6 @@
 
 #include "connection.h"
 #include "build_config.h"
-#include "callback.h"
 
 namespace sql
 {
@@ -59,10 +58,6 @@ public:
 
   virtual const sql::SQLString & getName() = 0;
 
-  virtual void setCallBack(sql::Fido_Callback &cb) = 0;
-
-  virtual void setCallBack(sql::Fido_Callback &&cb) = 0;
-
   virtual void threadInit() = 0;
 
   virtual void threadEnd() = 0;
@@ -70,35 +65,12 @@ public:
 
 } /* namespace sql */
 
-
-CPPCONN_PUBLIC_FUNC void check(const std::string &);
-CPPCONN_PUBLIC_FUNC void check(const std::map<std::string,std::string> &);
-
-/*
-  Checks if user standard lib is compatible with connector one
-*/
-inline static void check_lib()
-{
-  check(std::string{});
-  check(std::map<std::string,std::string>{});
-}
-
 extern "C"
 {
-
-  CPPCONN_PUBLIC_FUNC sql::Driver * _get_driver_instance_by_name(const char * const clientlib);
+  CPPCONN_PUBLIC_FUNC sql::Driver * get_driver_instance();
 
   /* If dynamic loading is disabled in a driver then this function works just like get_driver_instance() */
-  inline static sql::Driver * get_driver_instance_by_name(const char * const clientlib)
-  {
-    check_lib();
-    return _get_driver_instance_by_name(clientlib);
-  }
-
-  inline static sql::Driver * get_driver_instance()
-  {
-    return get_driver_instance_by_name("");
-  }
+  CPPCONN_PUBLIC_FUNC sql::Driver * get_driver_instance_by_name(const char * const clientlib);
 }
 
 #endif /* _SQL_DRIVER_H_ */

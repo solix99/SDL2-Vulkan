@@ -30,7 +30,6 @@
 #include "LMap.h"
 #include "LCrypto.h"
 
-
 WSADATA wData;
 #pragma comment(lib, "Ws2_32.lib")
 #define DEFAULT_PORT "27015"
@@ -875,8 +874,33 @@ void createBigTexture(LTexture &sTexture, LTexture &tTexture,int mapSizeX, int m
 
 int sendPacket(void* ptr)
 {
+	stringstream fpsSS;
+	int frame = 0;
 
+	while (true)
+	{
+		if (EP.EXECUTE.isSendThreadActive)
+		{
+			SDL_Delay(SDL_GLOBAL_DELAY);
 
+			EP.TEMP.DATAPACKET.clear();
+			EP.TEMP.DATAPACKET.str(string());
+			EP.TEMP.DATAPACKET << GET_DATA_ABOUT_PLAYER << "," << gServer.getClientID() << "," << gServer.getClientNickname() << "," << CLIENT.getPosX() << "," << CLIENT.getPosY() << ",";
+			EP.TEMP.DATAPACKET << sFlipType << "," << CLIENT.getAnimType() << ",";
+
+			if (EP.EXECUTE.injectProjectile)
+			{
+				EP.TEMP.DATAPACKET << UPDATE_BULLET << ",";
+				EP.TEMP.DATAPACKET << EP.TEMP.projectileX << "," << EP.TEMP.projectileY << "," << EP.TEMP.projectileDX << "," << EP.TEMP.projectileDY << ",";
+				EP.EXECUTE.injectProjectile = false;
+			}
+
+			EP.TEMP.DATAPACKET << END_OF_PACKET;
+
+			clientSendData(EP.TEMP.DATAPACKET.str());
+		}
+		//SDL_Delay(SDL_GLOBAL_DELAY);
+	}
 	return 0;
 }
 
@@ -1222,6 +1246,13 @@ bool loadMedia()
 
 void close()
 {
+	//health_bar_texture.free();
+
+	EP.TEMP.DATAPACKET.clear();
+	EP.TEMP.DATAPACKET.str(string());
+	EP.TEMP.DATAPACKET << DELETE_PLAYER << "," << gServer.getClientID() << "," << gServer.getClientNickname() << "," << END_OF_PACKET;
+
+	//iResult = send(ConnectSocket, EP.TEMP.DATAPACKET.str().c_str(), (int)strlen(EP.TEMP.DATAPACKET.str().c_str()), 0);
 
 	Mix_FreeChunk(bluebullet_sound);
 	Mix_FreeMusic(gMusic);
@@ -1247,6 +1278,271 @@ void close()
 	SDL_Quit();
 }
 
+bool loginLoop()
+{
+	iResult = shutdown(ConnectSocket, SD_BOTH);
+	closesocket(ConnectSocket);
+
+	EP.EXECUTE.isReciveThreadActive = false;
+
+	EP.EXECUTE.exitCurrentLoop = false;
+	bool quit = false;
+	bool inside = false;
+	bool typeLinePos = false;
+	int typeLineLenght = 0;
+	bool newInput = false;
+	bool attemptSuccesful = false;
+	bool attemptFailed = false;
+	bool alphaIn = true, alphaOut = false;
+	bool loggedIn = false;
+
+	int alpha = 55;
+
+	SDL_StartTextInput();
+
+	string user_ss = "admin";
+	string pass_ss = "admin";
+	string pStar;
+	string text_info;
+
+	EP.GSYS.RESOLUTION_CLIP  = { 0, 0, gWindow.getWidth(),gWindow.getHeight() };
+
+	while (EP.EXECUTE.exitCurrentLoop == false && loggedIn == false)
+	{
+		while (SDL_PollEvent(&e))
+		{
+			if (e.type == SDL_KEYDOWN)
+			{
+				if (e.key.keysym.sym == SDLK_TAB)
+				{
+					typeLinePos = !typeLinePos;
+				}
+
+				if (e.key.keysym.sym == SDLK_BACKSPACE && user_ss.length() > 0)
+				{
+					if (!typeLinePos)
+					{
+						user_ss.pop_back();
+					}
+				}
+				if (e.key.keysym.sym == SDLK_BACKSPACE && pass_ss.length() > 0)
+				{
+					if (typeLinePos)
+					{
+						pass_ss.pop_back();
+						pStar.pop_back();
+					}
+				}
+
+				//Handle copy
+				else if (e.key.keysym.sym == SDLK_c && SDL_GetModState() & KMOD_CTRL && !typeLinePos)
+				{
+					SDL_SetClipboardText(user_ss.c_str());
+				}
+				//Handle paste
+				else if (e.key.keysym.sym == SDLK_v && SDL_GetModState() & KMOD_CTRL && !typeLinePos)
+				{
+					user_ss = SDL_GetClipboardText();
+				}
+
+				user_text_texture.loadFromRenderedText(user_ss.c_str(), gColor, gWindow.getRenderer(), gNorthFont);
+				pass_text_texture.loadFromRenderedText(pStar.c_str(), gColor, gWindow.getRenderer(), gNorthFont);
+
+			}
+			else if (e.type == SDL_TEXTINPUT)
+			{
+				if (!((e.text.text[0] == 'c' || e.text.text[0] == 'C') && (e.text.text[0] == 'v' || e.text.text[0] == 'V') && SDL_GetModState() & KMOD_CTRL))
+				{
+					if (!typeLinePos)
+					{
+						user_ss += e.text.text;
+					}
+					else
+					{
+						pass_ss += e.text.text;
+						pStar = pStar + '*';
+					}
+				}
+				user_text_texture.loadFromRenderedText(user_ss.c_str(), gColor, gWindow.getRenderer(), gNorthFont);
+				pass_text_texture.loadFromRenderedText(pStar.c_str(), gColor, gWindow.getRenderer(), gNorthFont);
+			}
+
+			else if (e.type == SDL_MOUSEBUTTONDOWN)
+			{
+				if (user_textbox_button.handleClick(e))
+				{
+					typeLinePos = false;
+				}
+				if (pass_textbox_button.handleClick(e))
+				{
+					typeLinePos = true;
+				}
+				if (MEM.BTT.LOGIN.handleClick(e))
+				{
+					if (gServer.attemptLogin(user_ss, pass_ss))
+					{
+						attemptSuccesful = true;
+						info_text_texture.loadFromRenderedText("Login succesful.", gColor, gWindow.getRenderer(), gNorthFont);
+						loggedIn = true;
+						popup_timer.start();
+						connectInfo.clear();
+						connectInfo.str(string());
+						connectInfo << NEW_PLAYER << "," << gServer.getClientID() << "," << gServer.getClientNickname() << "," << END_OF_PACKET;
+					}
+					else
+					{
+						kickPlayerDuplicate = true;
+						duplicateInfo.clear();
+						duplicateInfo.str(string());
+						duplicateInfo << DELETE_PLAYER << "," << gServer.getClientID() << "," << gServer.getClientNickname() << "," << END_OF_PACKET;
+						attemptFailed = true;
+						info_text_texture.loadFromRenderedText("Invalid Credentials.", gColor, gWindow.getRenderer(), gNorthFont);
+						popup_timer.start();
+					}
+					//100 32
+					user_ss = "";
+					pass_ss = "";
+					pStar = "";
+				}
+				if (MEM.BTT.REGISTER.handleClick(e))
+				{
+					if (gServer.attemptRegister(user_ss, pass_ss) == 0)
+					{
+						info_text_texture.loadFromRenderedText("Account created.", gColor, gWindow.getRenderer(), gNorthFont);
+					}
+					else if (gServer.attemptRegister(user_ss, pass_ss) == 1)
+					{
+						info_text_texture.loadFromRenderedText("Username already in use.", gColor, gWindow.getRenderer(), gNorthFont);
+					}
+					else if (gServer.attemptRegister(user_ss, pass_ss) == 2)
+					{
+						info_text_texture.loadFromRenderedText("Server Error.", gColor, gWindow.getRenderer(), gNorthFont);
+					}
+					else if (gServer.attemptRegister(user_ss, pass_ss) == 3)
+					{
+						info_text_texture.loadFromRenderedText("User/Pass not allowed.", gColor, gWindow.getRenderer(), gNorthFont);
+					}
+
+					attemptFailed = true;
+
+					popup_timer.start();
+
+					user_ss = "";
+					pass_ss = "";
+					pStar = "";
+				}
+			}
+
+			else if (e.type == SDL_QUIT)
+			{
+				EP.EXECUTE.exitCurrentLoop = true;
+			}
+		}
+
+		gWindow.handleEvent(e);
+		SDL_SetRenderDrawColor(gWindow.getRenderer(), 0xFF, 0xFF, 0xFF, 0xFF);
+		SDL_RenderClear(gWindow.getRenderer());
+
+		background_texture.render(gWindow.getRenderer(), 0, 0, &EP.GSYS.RESOLUTION_CLIP, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+
+		user_text_texture.loadFromRenderedText(user_ss.c_str(), gColor, gWindow.getRenderer(), gNorthFont);
+		pass_text_texture.loadFromRenderedText(pStar.c_str(), gColor, gWindow.getRenderer(), gNorthFont);
+
+		loginPage_texture.render(gWindow.getRenderer(), gWindow.getWidth() * 0.5f - loginPage_texture.getWidth() / 2, gWindow.getHeight() * 0.5f - loginPage_texture.getHeight() / 2, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+
+		MEM.BTT.LOGIN.render(gWindow.getRenderer());
+		MEM.BTT.REGISTER.render(gWindow.getRenderer());
+
+		SDL_SetRenderDrawColor(gWindow.getRenderer(), 0, 0, 0, 0xFF);
+
+		if (!typeLinePos)
+		{
+			typeLineLenght = user_ss.length() * 6.5f;
+			if (typeLine_timer.getTicks() > 500)
+			{
+				if (typeLine_timer.getTicks() > 1000)
+				{
+					typeLine_timer.reset();
+				}
+				SDL_RenderDrawLine(gWindow.getRenderer(), gWindow.getWidth() / 2.2f + typeLineLenght, gWindow.getHeight() / 2.175f, gWindow.getWidth() / 2.2f + typeLineLenght, gWindow.getHeight() / 2.175f + 15);
+			}
+		}
+		else
+		{
+			typeLineLenght = pass_ss.length() * 6.5f;
+			if (typeLine_timer.getTicks() > 500)
+			{
+				if (typeLine_timer.getTicks() > 1000)
+				{
+					typeLine_timer.reset();
+				}
+				SDL_RenderDrawLine(gWindow.getRenderer(), gWindow.getWidth() / 2.2f + typeLineLenght , gWindow.getHeight()/2, gWindow.getWidth()/2.2f  + typeLineLenght, gWindow.getHeight()/2 + 15);
+			}
+		}
+
+		user_text_texture.render(gWindow.getRenderer(), gWindow.getWidth()*0.466f , gWindow.getHeight()*0.466f, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+		pass_text_texture.render(gWindow.getRenderer(), gWindow.getWidth()*0.466f, gWindow.getHeight()*0.51f, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+
+		SDL_SetRenderDrawColor(gWindow.getRenderer(), 0xFF, 0xFF, 0xFF, 0xFF);
+
+		if (attemptSuccesful)
+		{
+			if (popup_timer.getTicks() > 3000)
+			{
+				attemptSuccesful = false;
+				popup_timer.stop();
+				popup_timer.reset();
+				alphaIn = true;
+			}
+			green_textbox_texture.setAlpha(alpha);
+			green_textbox_texture.render(gWindow.getRenderer(), 555, 425, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+
+			info_text_texture.render(gWindow.getRenderer(), 575, 435, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+
+			loggedIn = true;
+
+			return true;
+		}
+		if (attemptFailed)
+		{
+			if (popup_timer.getTicks() > 3000)
+			{
+				attemptFailed = false;
+				popup_timer.stop();
+				popup_timer.reset();
+				alphaIn = true;
+			}
+			red_textbox_texture.setAlpha(alpha);
+			red_textbox_texture.render(gWindow.getRenderer(), 555, 425, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+
+			info_text_texture.render(gWindow.getRenderer(), 575, 435, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+		}
+
+		gWindow.render();
+
+		if (attemptFailed || attemptSuccesful)
+		{
+			if (alphaIn)
+			{
+				alpha = alpha + popup_timer.getTicks() / 550;
+			}
+			else
+			{
+				alpha = alpha - popup_timer.getTicks() / 550;
+			}
+			if (alpha > 255)
+			{
+				alphaIn = false;
+			}
+		}
+		SDL_Delay(SDL_GLOBAL_DELAY);
+	}
+
+	SDL_StopTextInput();
+
+	return false;
+}
+
 string getData(int len, char* data)
 {
 	string sdata(data);
@@ -1254,11 +1550,255 @@ string getData(int len, char* data)
 	return sdata;
 }
 
+int oldSql(void* ptr)
+{
+	int frame = 0;
 
+	LTimer fps;
+	LTimer update;
+	fps.start();
+	update.start();
 
+	while (bServerThread)
+	{
+
+	}
+	return 0;
+}
+
+int v1, v2;
+
+string getDataBlock(const string& data)
+{
+	v2 = v1;
+	v1 = data.find(',', v2 + 1);
+	return data.substr(v2 + 1, v1 - v2 - 1);
+}
 
 int recivePacket(void* ptr)
 {
+	char sendbuf[DEFAULT_BUFLEN];
+	char recvbuff[DEFAULT_BUFLEN];
+
+	string posX[MAX_PLAYER_ENTITY], posY[MAX_PLAYER_ENTITY], ID[MAX_PLAYER_ENTITY], nickname[MAX_PLAYER_ENTITY], count, rFlipType[MAX_PLAYER_ENTITY], animType[MAX_PLAYER_ENTITY], data, posX2, posY2, id;
+	bool exists = false;
+	int frame = 0, identifier;
+
+	LTimer fps;
+	LTimer update;
+	fps.start();
+	update.start();
+
+	while (true)
+	{
+		if (EP.EXECUTE.isReciveThreadActive)
+		{
+			memset(recvbuff, 0, DEFAULT_BUFLEN);
+			iResult = recv(ConnectSocket, recvbuff, DEFAULT_BUFLEN, 0);
+
+			data = getData(iResult, recvbuff);
+			v1 = data.find(',');
+			identifier = atoi(data.substr(0, v1).c_str());
+
+		//	cout << endl << data;
+			if (identifier == ENCRYPTION_INFO)
+			{
+				MEM.OBJ.Crypto.setModulus(atoi(getDataBlock(data).c_str()));
+				MEM.OBJ.Crypto.setPublicKey(atoi(getDataBlock(data).c_str()));
+			}
+			if (identifier == GET_DATA_ABOUT_PLAYER)
+			{
+				count = getDataBlock(data);
+				for (unsigned int i = 0; i < atoi(count.c_str()); i++)
+				{
+					ID[i] = getDataBlock(data);
+					nickname[i] = getDataBlock(data);
+					posX[i] = getDataBlock(data);
+					posY[i] = getDataBlock(data);
+					rFlipType[i] = getDataBlock(data);
+					animType[i] = getDataBlock(data);
+				}
+
+				for (unsigned int i = 0; i < atoi(count.c_str()); i++)
+				{
+					if (ID[i] != gServer.getClientID())
+					{
+						for (int j = 0; j < MAX_PLAYER_ENTITY; j++)
+						{
+							if (Player[j].getIfSlotUsed() && Player[j].getPlayerID() == ID[i])
+							{
+								Player[j].setPosX(atoi(posX[i].c_str()));
+								Player[j].setPosY(atoi(posY[i].c_str()));
+								Player[j].setFlipTypeString(rFlipType[i]);
+								if (rFlipType[i] == "horizontal") Player[j].setFlipType(SDL_FLIP_HORIZONTAL);
+								else Player[j].setFlipType(SDL_FLIP_NONE);
+
+								Player[j].setAnimType(animType[i]);
+
+								break;
+							}
+						}
+					}
+				}
+			}
+			else if (identifier == DELETE_PLAYER)
+			{
+				string ID = getDataBlock(data);
+				for (unsigned int i = 0; i < MAX_PLAYER_ENTITY; i++)
+				{
+					if (Player[i].getIfSlotUsed() && !Player[i].getPlayerDead() && (Player[i].getPlayerID() == ID))
+					{
+						Player[i].setIfSlotUsed(false);
+						break;
+					}
+				}
+			}
+			else if (identifier == NEW_PLAYER)
+			{
+				ID[0] = getDataBlock(data);
+				nickname[0] = getDataBlock(data);
+
+				if (ID[0] != gServer.getClientID())
+				{
+					for (int j = 0; j < MAX_PLAYER_ENTITY; j++)
+					{
+						if (!Player[j].getIfSlotUsed())
+						{
+							Player[j].setIfSlotUsed(true);
+							Player[j].setPlayerID(ID[0]);
+							Player[j].setNickname(nickname[0]);
+							Player[j].setPlayerDead(false);
+							break;
+						}
+					}
+				}
+				
+			}
+			else if (identifier == DAMAGE_PLAYER)
+			{
+				ID[0] = getDataBlock(data); // dmg giver
+				ID[1] = getDataBlock(data); // dmg taker
+				EP.TEMP.damageAmount = atoi(getDataBlock(data).c_str());
+
+				if (ID[1] == gServer.getClientID())
+				{
+					CLIENT.damageTarget(EP.TEMP.damageAmount);
+					break;
+				}
+
+				for (unsigned int i = 0; i < MAX_PLAYER_ENTITY; i++)
+				{
+					if (Player[i].getIfSlotUsed() && !Player[i].getPlayerDead() && Player[i].getID() == ID[1])
+					{
+						Player[i].damageTarget(EP.TEMP.damageAmount);
+
+						break;
+					}
+				}
+			}
+			else if (identifier == MATCHING_COMPLETE)
+			{
+				int mTypePC = atoi(getDataBlock(data).c_str()) == TWO_PLAYER ? 2 : 4;
+
+				for (int i = 0; i < mTypePC; i++)
+				{
+					ID[i] = getDataBlock(data);
+					nickname[i] = getDataBlock(data);
+
+					if (ID[i] != gServer.getClientID())
+					{
+						for (int j = 0; j < MAX_PLAYER_ENTITY; j++)
+						{
+							if (!Player[j].getIfSlotUsed())
+							{
+								Player[j].setIfSlotUsed(true);
+								Player[j].setPlayerID(ID[i]);
+								Player[j].setNickname(nickname[i]);
+								Player[j].setPlayerDead(false);
+								//cout << endl << "NEW PLAYER ON ID:" << j << " MAX:" << mTypePC;
+
+								break;
+							}
+						}
+					}
+				}
+
+				EP.EXECUTE.inMatchingScreen = false;
+			}
+			else if (identifier == UPDATE_BULLET)
+			{
+				ID[0] = getDataBlock(data);
+				nickname[0] = getDataBlock(data);
+				posX[0] = getDataBlock(data);
+				posY[0] = getDataBlock(data);
+				posX2 = getDataBlock(data);
+				posY2 = getDataBlock(data);
+
+				for (int i = 0; i < MAX_PLAYER_ENTITY; i++)
+				{
+					if (ID[0] == Player[i].getPlayerID() && ID[0] != gServer.getClientID())
+					{
+						for (int j = 0; j < MAX_PLAYER_BULLET_COUNT; j++)
+						{
+							if (Player[i].gProjectile[j].getSlotFree())
+							{
+								Player[i].gProjectile[j].DISTANCE = sqrt(pow(atoi(posX2.c_str()) - atoi(posX[0].c_str()), 2) + pow(atoi(posY2.c_str()) - atoi(posY[0].c_str()), 2));
+
+								Player[i].gProjectile[j].setSlotFree(false);
+								Player[i].gProjectile[j].setPosX(atoi(posX[0].c_str()));
+								Player[i].gProjectile[j].setPosY(atoi(posY[0].c_str()));
+								Player[i].gProjectile[j].setDestX(atoi(posX2.c_str()));
+								Player[i].gProjectile[j].setDestY(atoi(posY2.c_str()));
+								Player[i].gProjectile[j].setAngle(90 + (atan2(atoi(posY2.c_str()) - atoi(posY[0].c_str()), atoi(posX2.c_str()) - atoi(posX[0].c_str())) * 180 / 3.14f));
+								Player[i].gProjectile[j].setVelX((Player[i].gProjectile[j].getProjSpeed() / Player[i].gProjectile[j].DISTANCE) * (atoi(posX2.c_str()) - atoi(posX[0].c_str())));
+								Player[i].gProjectile[j].setVelY((Player[i].gProjectile[j].getProjSpeed() / Player[i].gProjectile[j].DISTANCE) * (atoi(posY2.c_str()) - atoi(posY[0].c_str())));
+
+								break;
+							}
+						}
+						break;
+					}
+				}
+			}
+			else if (identifier == MATCH_RESULT)
+			{
+				cout << endl << "got result";
+
+				ID[0] = getDataBlock(data);
+
+				EP.TEMP.MATCH_RESULT_WON = ID[0] == gServer.getClientID() ? true : false;
+
+				EP.EXECUTE.MATCH_RESULT_SCREEN = true;
+
+				resetPlayerData();
+			}
+			else if (identifier == SET_POSITION)
+			{
+				posX[0] = getDataBlock(data);
+				posY[0] = getDataBlock(data);
+
+				CLIENT.setPosX(atoi(posX[0].c_str()));
+				CLIENT.setPosY(atoi(posY[0].c_str()));
+			}
+			else if (identifier == KILL_PLAYER)
+			{
+				ID[0] = getDataBlock(data); // dmg giver
+				ID[1] = getDataBlock(data); // dmg taker
+
+				for (unsigned int i = 0; i < MAX_PLAYER_ENTITY; i++)
+				{
+					if (Player[i].getIfSlotUsed() && Player[i].getID() == ID[1])
+					{
+						Player[i].setPlayerDead(true);
+
+						//cout << endl << id[0] << " killed " << ID[1];
+
+						break;
+					}
+				}
+			}
+		}
+	}
 
 	return 0;
 }
@@ -1285,7 +1825,264 @@ void computeFPS()
 	}
 }
 
+bool matchingLoop()
+{
+	SDL_ShowCursor(true);
 
+	SDL_DetachThread(THREAD.PHYSICS);
+	SDL_DetachThread(THREAD.SEND_DATA);
+
+	SDL_Delay(10);
+
+	EP.EXECUTE.isMatching = false;
+	EP.EXECUTE.inMatchingScreen = true;
+	EP.EXECUTE.exitCurrentLoop = false;
+	resetPlayerData();
+
+	EP.TEMP.DATAPACKET.clear();
+	EP.TEMP.DATAPACKET.str(string());
+	EP.TEMP.DATAPACKET << START_MATCHMAKING << "," << gServer.getClientID() << "," << gServer.getClientNickname() << ",";
+
+	if (!connectToGameServer())
+	{
+		cout << endl << "[FAILED TO CONNECT TO GAME SERVER] " << WSAGetLastError();
+		return false;
+	}
+	else
+	{
+		cout << endl << "[CONNECTED TO GAME SERVER]";
+	}
+
+	clientSendData(connectInfo.str());
+
+	while (EP.EXECUTE.inMatchingScreen && !EP.EXECUTE.exitCurrentLoop)
+	{
+		while (SDL_PollEvent(&e))
+		{
+			if (e.type == SDL_QUIT)
+			{
+				EP.EXECUTE.exitCurrentLoop = true;
+			}
+			else if (e.type == SDL_MOUSEMOTION)
+			{
+				mouseX = e.motion.x;
+				mouseY = e.motion.y;
+			}
+			else if (e.type == SDL_MOUSEBUTTONDOWN)
+			{
+				if (!EP.EXECUTE.isMatching)
+				{
+					if (MEM.BTT.MATCHING_2PLAYER.handleClick(e))
+					{
+						EP.EXECUTE.isMatching = true;
+						EP.TEMP.matchingType = TWO_PLAYER;
+						EP.TEMP.DATAPACKET << EP.TEMP.matchingType << "," << END_OF_PACKET;
+
+						clientSendData(EP.TEMP.DATAPACKET.str());
+
+					}
+					else if (MEM.BTT.MATCHING_4PLAYER.handleClick(e))
+					{
+						EP.EXECUTE.isMatching = true;
+						EP.TEMP.matchingType = FOUR_PLAYER;
+						EP.TEMP.DATAPACKET << EP.TEMP.matchingType << "," << END_OF_PACKET;
+						
+						clientSendData(EP.TEMP.DATAPACKET.str());
+					}
+				}
+			}
+		}
+
+		SDL_RenderClear(gWindow.getRenderer());
+		SDL_SetRenderDrawColor(gWindow.getRenderer(), 0, 0, 0, 0xFF);
+
+		if (!EP.EXECUTE.isMatching)
+		{
+			background_texture.render(gWindow.getRenderer(), 0, 0, &EP.GSYS.RESOLUTION_CLIP, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+			MEM.BTT.MATCHING_2PLAYER.render(gWindow.getRenderer());
+			MEM.BTT.MATCHING_4PLAYER.render(gWindow.getRenderer());
+		}
+		else
+		{
+			background_texture.render(gWindow.getRenderer(), 0, 0, &EP.GSYS.RESOLUTION_CLIP, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+			MEM.TEXTR.MATCHING_IN_PROGRESS.render(gWindow.getRenderer(), gWindow.getWidth() / 2 - MEM.TEXTR.MATCHING_IN_PROGRESS.getWidth() / 2, gWindow.getHeight() / 2 - MEM.TEXTR.MATCHING_IN_PROGRESS.getHeight() / 2, NULL, NULL, NULL, SDL_FLIP_NONE, EP.EXECUTE.renderCollisionBox, 0, 0, 0, 0);
+		}
+
+		clientSendData(EP.TEMP.DATAPACKET_DEFAULT.str());
+
+		gWindow.handleEvent(e);
+		gWindow.render();
+
+		SDL_Delay(FPS_LIMIT_DELAY);
+	}
+
+	if (EP.EXECUTE.exitCurrentLoop == true)
+	{
+		return false;
+	}
+	else
+	{
+		EP.EXECUTE.isMatching = false;
+		return true;
+	}
+
+}
+
+bool playLoop()
+{
+	EP.EXECUTE.exitCurrentLoop = false;
+	bool quit = false;
+	bool inside = false;
+	int xLast = 0, yLast = 0;
+
+	bool collisionFound = false;
+
+	fireball_attack_timer.start();
+
+	SDL_ShowCursor(false);
+
+	EP.GSYS.physicsTimer.start();
+	EP.GSYS.physicsTimerMovement.start();
+	EP.GSYS.fpsTimer.start();
+
+	MEM.MAP.CURRENT_MAP = &MEM.MAP.GRASS_WORLD;
+
+	while (EP.EXECUTE.exitCurrentLoop == false)
+	{
+		while (SDL_PollEvent(&e))
+		{
+			if (e.type == SDL_KEYDOWN)
+			{
+				if (e.key.keysym.sym == SDLK_INSERT)
+				{
+					if (EP.EXECUTE.INSERT_OBJECT)
+					{
+						EP.FSTR.mapData.open(*MEM.MAP.CURRENT_MAP->getDataPath(), ios::out | ios::app);
+						EP.FSTR.mapData << EP.TEMP.MAP_OBJECT_ID << " " << CLIENT.getPosX() + EP.TEMP.MOUSE_X - EP.TEMP.CAMERA_X << " " << CLIENT.getPosY() + EP.TEMP.MOUSE_Y - EP.TEMP.CAMERA_Y << " ";
+						EP.FSTR.mapData.close();
+						MEM.MAP.CURRENT_MAP->insertObject(EP.TEMP.MAP_OBJECT_ID, CLIENT.getPosX() + EP.TEMP.MOUSE_X - EP.TEMP.CAMERA_X, CLIENT.getPosY() + EP.TEMP.MOUSE_Y - EP.TEMP.CAMERA_Y);
+					}
+				}
+				if (e.key.keysym.sym == SDLK_HOME)
+				{
+					cin >> EP.TEMP.MAP_OBJECT_ID;
+					MEM.TEXTR.NEW_OBJECT = *MEM.MAP.CURRENT_MAP->getObjectTexture(EP.TEMP.MAP_OBJECT_ID);
+
+					EP.EXECUTE.INSERT_OBJECT = true;
+				}
+				if (e.key.keysym.sym == SDLK_DELETE)
+				{
+					SDL_Rect tempCollision = { CLIENT.getPosX() + EP.TEMP.MOUSE_X - EP.TEMP.CAMERA_X, CLIENT.getPosY() + EP.TEMP.MOUSE_Y - EP.TEMP.CAMERA_Y, 10,10};
+					MEM.MAP.CURRENT_MAP->deleteObject(tempCollision);
+					EP.EXECUTE.INSERT_OBJECT = false;
+				}
+				if (e.key.keysym.sym == SDLK_MINUS)
+				{
+					if (EP.EXECUTE.renderCollisionBox == true)
+					{
+						EP.EXECUTE.renderCollisionBox = false;
+					}
+					else
+					{
+						EP.EXECUTE.renderCollisionBox = true;
+					}
+				}	
+			}
+			else if (e.type == SDL_TEXTINPUT)
+			{
+				if (!((e.text.text[0] == 'c' || e.text.text[0] == 'C') && (e.text.text[0] == 'v' || e.text.text[0] == 'V') && SDL_GetModState() & KMOD_CTRL))
+				{
+
+				}
+			}
+			else if (e.type == SDL_MOUSEBUTTONUP)
+			{
+				if (e.button.button == SDL_BUTTON_LEFT && fireball_attack_timer.getTicks() > 500)
+				{
+					fireball_attack_timer.reset();
+
+					ANIM_RUNNING_ATTACK.setInUse(true);
+					CLIENT.spawnProjectile(CLIENT.getPosX(), CLIENT.getPosY(), 0, (e.button.x + MEM.MAP.CURRENT_MAP->getCamera().x), e.button.y + MEM.MAP.CURRENT_MAP->getCamera().y, EP.GSYS.DEFAULT_PROJ_SPEED);
+					CLIENT.setProjectileActive(true);
+
+					EP.EXECUTE.injectProjectile = true;
+
+					EP.TEMP.projectileX = CLIENT.getPosX();
+					EP.TEMP.projectileY = CLIENT.getPosY();
+					EP.TEMP.projectileDX = e.button.x;
+					EP.TEMP.projectileDY = e.button.y;
+				}
+			}
+			else if (e.type == SDL_QUIT)
+			{
+				EP.EXECUTE.exitCurrentLoop = true;
+			}
+			else if (e.type == SDL_MOUSEMOTION)
+			{
+				mouseX = e.motion.x;
+				mouseY = e.motion.y;
+
+				EP.TEMP.MOUSE_X = mouseX - (crosshair_texture.getWidth() / 2);
+				EP.TEMP.MOUSE_Y = mouseY - (crosshair_texture.getHeight() / 2) + 40;
+			}
+		}
+
+		gWindow.handleEvent(e);
+
+		//CHECK FOR NEW PROJ COLLISIONS
+
+		if (addNewCollisionAnim)
+		{
+			for (unsigned int i = 0; i < MAX_PLAYER_BULLET_COUNT; i++)
+			{
+				if (!ANIM_CONTACT_REDEXPLOSION.getCropInUse(i))
+				{
+					ANIM_CONTACT_REDEXPLOSION.setCropInUse(i, true);
+					ANIM_CONTACT_REDEXPLOSION.setCropPosX(i, animCollisionX);
+					ANIM_CONTACT_REDEXPLOSION.setCropPosY(i, animCollisionY);
+
+					addNewCollisionAnim = false;
+
+					break;
+				}
+			}
+		}
+
+		//computeFPS();
+
+		renderTextures();
+
+		if (EP.EXECUTE.MATCH_RESULT_SCREEN)
+		{
+			matchResultScreen(EP.TEMP.MATCH_RESULT_WON);
+		}
+
+		SDL_Delay(FPS_LIMIT_DELAY);
+	}
+
+	if (!EP.EXECUTE.MATCH_RESULT_SCREEN)
+	{
+		EP.TEMP.MATCH_RESULT_WON = false;
+		matchResultScreen(EP.TEMP.MATCH_RESULT_WON);
+	}
+
+	EP.EXECUTE.MATCH_RESULT_SCREEN = false;
+	EP.EXECUTE.isSendThreadActive = false;
+	EP.EXECUTE.isPhysicsThreadActive = false;
+
+	iResult = shutdown(ConnectSocket, SD_BOTH);
+	if (iResult == SOCKET_ERROR)
+	{
+		printf("shutdown failed: %d\n", WSAGetLastError());
+		closesocket(ConnectSocket);
+		WSACleanup();
+	}
+
+	closesocket(ConnectSocket);
+
+	return false;
+}
+//OTHER GAMES BREAK WHEN AN ONGOING GAME IS TERMINATED
 
 int main(int argc, char* args[])
 {
@@ -1305,11 +2102,35 @@ int main(int argc, char* args[])
 
 			THREAD.PHYSICS = SDL_CreateThread(processPhysics, "processPhysics", (void*)NULL);
 			
-			while(!SDL_Quit)
+			if (SKIP_CONN)
 			{
+				EP.EXECUTE.isPhysicsThreadActive = true;
 
+				while (playLoop())
+				{
 
+				}
+			}
+			else
+			{
+				THREAD.RECIVE_DATA = SDL_CreateThread(recivePacket, "SendPacket", (void*)NULL);
+				THREAD.SEND_DATA = SDL_CreateThread(sendPacket, "SendPacket", (void*)NULL);
 
+				while (loginLoop())
+				{
+					EP.EXECUTE.isReciveThreadActive = true;
+					while (matchingLoop())
+					{
+						EP.EXECUTE.isSendThreadActive = true;
+						EP.EXECUTE.isPhysicsThreadActive = true;
+
+						while (playLoop())
+						{
+
+						}
+
+					}
+				}
 			}
 		}
 	}

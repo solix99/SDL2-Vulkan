@@ -32,7 +32,6 @@
 #define MYSQLX_COMMON_UTIL_H
 
 #include "api.h"
-#include <limits>
 
 /*
   Macros used to disable warnings for fragments of code.
@@ -337,7 +336,7 @@ std::string to_upper(const std::string &val)
   std::string uc_val;
   uc_val.resize(val.size());
   transform(val.begin(), val.end(), uc_val.begin(), ::toupper);
-  return uc_val;
+  return std::move(uc_val);
 }
 
 inline
@@ -348,7 +347,7 @@ std::string to_lower(const std::string &val)
   std::string uc_val;
   uc_val.resize(val.size());
   transform(val.begin(), val.end(), uc_val.begin(), ::tolower);
-  return uc_val;
+  return std::move(uc_val);
 }
 
 }  // common

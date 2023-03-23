@@ -34,18 +34,15 @@
 #define _MYSQL_CONNECTION_H_
 
 #include "cppconn/connection.h"
-#include <memory>
-
-#if(_WIN32 && CONCPP_BUILD_SHARED)
-extern std::string driver_dll_path;
-#endif
+#include <boost/shared_ptr.hpp>
+#include <boost/scoped_ptr.hpp>
 
 namespace sql
 {
 namespace mysql
 {
 
-class CPPCONN_PUBLIC_FUNC MySQL_Savepoint : public sql::Savepoint
+class MySQL_Savepoint : public sql::Savepoint
 {
   sql::SQLString name;
 
@@ -186,7 +183,7 @@ private:
 #pragma warning(push)
 #pragma warning(disable: 4251)
 #endif
-  std::shared_ptr< NativeAPI::NativeConnectionWrapper > proxy;
+  boost::shared_ptr< NativeAPI::NativeConnectionWrapper > proxy;
 #ifdef _WIN32
 #pragma warning(pop)
 #endif
@@ -197,9 +194,9 @@ private:
 #pragma warning(push)
 #pragma warning(disable: 4251)
 #endif
-  std::unique_ptr< ::sql::mysql::MySQL_Statement > service;
+  boost::scoped_ptr< ::sql::mysql::MySQL_Statement > service;
 
-  std::unique_ptr< ::sql::mysql::MySQL_ConnectionData > intern; /* pimpl */
+  boost::scoped_ptr< ::sql::mysql::MySQL_ConnectionData > intern; /* pimpl */
 #ifdef _WIN32
 #pragma warning(pop)
 #endif

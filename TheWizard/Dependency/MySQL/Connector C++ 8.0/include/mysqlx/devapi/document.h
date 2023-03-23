@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2.0, as
@@ -55,11 +55,6 @@ class Value;
 class DbDoc;
 class DocResult;
 class SessionSettings;
-
-namespace internal{
-class Schema_detail;
-
-} //internal
 
 using Field = std::string;
 
@@ -175,7 +170,6 @@ public:
   friend Impl;
   friend DocResult;
   friend Value;
-  friend internal::Schema_detail;
 };
 
 
@@ -473,38 +467,7 @@ public:
     switch (m_type)
     {
     case DOC: out << m_doc; return;
-    case ARR:
-        {
-          bool first = true;
-          out << "[";
-          for (auto it = m_arr->begin();it!=m_arr->end();++it)
-          {
-            if (!first)
-            {
-              out << ", ";
-            }
-            else
-            {
-              first = false;
-            }
-
-            switch (it->get_type())
-            {
-            case common::Value::STRING:
-            case common::Value::USTRING:
-            case common::Value::EXPR:
-              out << R"(")" << *it << R"(")";
-              break;
-            default:
-              out << *it;
-              break;
-            }
-
-
-          }
-          out << "]";
-          return;
-        }
+    case ARR: out << "<array with " << elementCount() << " element(s)>"; return;
     default:  common::Value::print(out); return;
     }
   }
