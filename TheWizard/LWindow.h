@@ -41,6 +41,8 @@ public:
 
 	void setFullscreen(bool);
 
+	SDL_Window* getWindow();
+
 private:
 	//Window data
 	SDL_Window* mWindow;

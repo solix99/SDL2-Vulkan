@@ -12,12 +12,13 @@ bool LWindow::init()
 	//Create window
 	if (mFullScreen)
 	{
-		mWindow = SDL_CreateWindow("The Wizard", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, mWidth, mHeight, SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN);
+		mWindow = SDL_CreateWindow("The Wizard", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, mWidth, mHeight, SDL_WINDOW_VULKAN);
 	}
 	else
 	{
-		mWindow = SDL_CreateWindow("The Wizard", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, mWidth, mHeight, SDL_WINDOW_SHOWN);
+		mWindow = SDL_CreateWindow("The Wizard", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, mWidth, mHeight, SDL_WINDOW_VULKAN);
 	}
+
 	
 	if (mWindow != NULL)
 	{
@@ -53,6 +54,10 @@ bool LWindow::init()
 	return mWindow != NULL && mRenderer != NULL;
 }
 
+SDL_Window* LWindow::getWindow()
+{
+	return mWindow;
+}
 
 void LWindow::handleEvent(SDL_Event& e)
 {
