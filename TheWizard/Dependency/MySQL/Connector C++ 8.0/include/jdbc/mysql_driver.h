@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2020, Oracle and/or its affiliates.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2.0, as
@@ -36,8 +36,7 @@
 
 #include "cppconn/driver.h"
 
-#include <boost/scoped_ptr.hpp>
-
+#include <memory>
 
 extern "C"
 {
@@ -61,10 +60,13 @@ class CPPCONN_PUBLIC_FUNC MySQL_Driver : public sql::Driver
 #pragma warning(push)
 #pragma warning(disable: 4251)
 #endif
-  boost::scoped_ptr< ::sql::mysql::NativeAPI::NativeDriverWrapper > proxy;
+  std::unique_ptr< ::sql::mysql::NativeAPI::NativeDriverWrapper > proxy;
 #ifdef _WIN32
 #pragma warning(pop)
 #endif
+
+  ::sql::Fido_Callback* fido_callback = nullptr;
+  ::sql::Fido_Callback fido_callback_store;
 
 public:
   MySQL_Driver();
@@ -84,6 +86,10 @@ public:
 
   const sql::SQLString & getName();
 
+  void setCallBack(sql::Fido_Callback &cb);
+
+  void setCallBack(sql::Fido_Callback &&cb);
+
   void threadInit();
 
   void threadEnd();
@@ -92,17 +98,30 @@ private:
   /* Prevent use of these */
   MySQL_Driver(const MySQL_Driver &);
   void operator=(MySQL_Driver &);
+
+  friend MySQL_Connection;
+
 };
 
 /** We do not hide the function if MYSQLCLIENT_STATIC_BINDING(or anything else) not defined
     because the counterpart C function is declared in the cppconn and is always visible.
     If dynamic loading is not enabled then its result is just like of get_driver_instance()
 */
-CPPCONN_PUBLIC_FUNC MySQL_Driver * get_driver_instance_by_name(const char * const clientlib);
 
-CPPCONN_PUBLIC_FUNC MySQL_Driver * get_driver_instance();
-static inline MySQL_Driver * get_mysql_driver_instance() { return get_driver_instance(); }
+CPPCONN_PUBLIC_FUNC MySQL_Driver * _get_driver_instance_by_name(const char * const clientlib);
 
+inline static MySQL_Driver * get_driver_instance_by_name(const char * const clientlib)
+{
+  check_lib();
+  return sql::mysql::_get_driver_instance_by_name(clientlib);
+}
+
+inline static MySQL_Driver * get_driver_instance()
+{
+  return sql::mysql::get_driver_instance_by_name("");
+}
+
+inline static MySQL_Driver *get_mysql_driver_instance() { return get_driver_instance(); }
 
 } /* namespace mysql */
 } /* namespace sql */
