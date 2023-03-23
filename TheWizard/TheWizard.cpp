@@ -31,7 +31,7 @@
 #include "LCrypto.h"
 #include <SDL_vulkan.h>
 #include <vulkan.h>
-
+#include <GLSL.std.450.h>
 
 WSADATA wData;
 #pragma comment(lib, "Ws2_32.lib")
@@ -743,13 +743,12 @@ bool initVulkan()
 		return result;
 	}
 
-
 	// Load the shader modules
-	std::vector<char> vertShaderCode = readFile("vertex_shader.spv");
-	std::vector<char> fragShaderCode = readFile("fragment_shader.spv");
+	std::vector<char> vertShaderCode = readFile("data/vertex_shader.spv");
+	std::vector<char> fragShaderCode = readFile("data/fragment_shader.spv");
 
-	VkShaderModule vertShaderModule = NULL; //createShaderModule(EP.RND.LOGICAL_DEVICE_VK, vertShaderCode);
-	VkShaderModule fragShaderModule = NULL; // createShaderModule(EP.RND.LOGICAL_DEVICE_VK, fragShaderCode);
+	VkShaderModule vertShaderModule = createShaderModule(EP.RND.LOGICAL_DEVICE_VK, vertShaderCode);
+	VkShaderModule fragShaderModule = createShaderModule(EP.RND.LOGICAL_DEVICE_VK, fragShaderCode);
 
 	// Create the pipeline shader stages
 	VkPipelineShaderStageCreateInfo vertexShaderStageCreateInfo = {};
@@ -882,14 +881,6 @@ bool initVulkan()
 		vkDestroySwapchainKHR(EP.RND.LOGICAL_DEVICE_VK, EP.RND.SWAPCHAIN_VK, nullptr);
 		return result;
 	}
-
-
-
-
-
-
-
-
 
 
 
