@@ -319,6 +319,9 @@ struct engineParameters
 		VkRenderPassBeginInfo RENDER_PASS_BEGIN_INFO_VK = {};
 		VkClearValue WINDOW_RENDER_COLOR_VK = { 1.0f, 1.0f, 1.0f, 1.0f };
 		VkSubmitInfo SUBMIT_INFO_VK = {};
+		VkShaderModule VERT_SHADER_MODULE = VK_NULL_HANDLE;
+		VkShaderModule FRAG_SHADER_MODULE = VK_NULL_HANDLE;
+
 
 	}RND;
 
@@ -836,23 +839,23 @@ bool initVulkan()
 	}
 
 	// Load the shader modules
-	std::vector<char> vertShaderCode = readFile("data/vertex_shader.spv");
-	std::vector<char> fragShaderCode = readFile("data/fragment_shader.spv");
+	std::vector<char> vertShaderCode = readFile("shaders/vertex_shader.spv");
+	std::vector<char> fragShaderCode = readFile("shaders/fragment_shader.spv");
 
-	VkShaderModule vertShaderModule = createShaderModule(EP.RND.LOGICAL_DEVICE_VK, vertShaderCode);
-	VkShaderModule fragShaderModule = createShaderModule(EP.RND.LOGICAL_DEVICE_VK, fragShaderCode);
+	EP.RND.VERT_SHADER_MODULE = createShaderModule(EP.RND.LOGICAL_DEVICE_VK, vertShaderCode);
+	EP.RND.FRAG_SHADER_MODULE = createShaderModule(EP.RND.LOGICAL_DEVICE_VK, fragShaderCode);
 
 	// Create the pipeline shader stages
 	VkPipelineShaderStageCreateInfo vertexShaderStageCreateInfo = {};
 	vertexShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	vertexShaderStageCreateInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	vertexShaderStageCreateInfo.module = vertShaderModule;
+	vertexShaderStageCreateInfo.module = EP.RND.VERT_SHADER_MODULE;
 	vertexShaderStageCreateInfo.pName = "main";
 
 	VkPipelineShaderStageCreateInfo fragmentShaderStageCreateInfo = {};
 	fragmentShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	fragmentShaderStageCreateInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	fragmentShaderStageCreateInfo.module = fragShaderModule;
+	fragmentShaderStageCreateInfo.module = EP.RND.FRAG_SHADER_MODULE;
 	fragmentShaderStageCreateInfo.pName = "main";
 
 		
@@ -864,13 +867,13 @@ bool initVulkan()
 	VkPipelineShaderStageCreateInfo vertShaderStageInfo = {};
 	vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	vertShaderStageInfo.module = vertShaderModule; // previously created vertex shader module
+	vertShaderStageInfo.module = EP.RND.VERT_SHADER_MODULE; // previously created vertex shader module
 	vertShaderStageInfo.pName = "main";
 
 	VkPipelineShaderStageCreateInfo fragShaderStageInfo = {};
 	fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	fragShaderStageInfo.module = fragShaderModule; // previously created fragment shader module
+	fragShaderStageInfo.module = EP.RND.FRAG_SHADER_MODULE; // previously created fragment shader module
 	fragShaderStageInfo.pName = "main";
 
 	// Create array of shader stage create info structures
