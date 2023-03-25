@@ -32,6 +32,7 @@
 #include <SDL_vulkan.h>
 #include <vulkan.h>
 #include <GLSL.std.450.h>
+#include "Shader.h"
 
 WSADATA wData;
 #pragma comment(lib, "Ws2_32.lib")
@@ -306,6 +307,8 @@ struct engineParameters
 		VkRenderPass RENDER_PASS_VK = VK_NULL_HANDLE;
 		vector<VkFramebuffer> SWAPCHAIN_FRAMEBUFFER_VK;
 		VkPipeline GRAPHICS_PIPELINE_VK = VK_NULL_HANDLE;
+		VkPipeline GRAPHICS_PIPELINE_2_VK = VK_NULL_HANDLE;
+		VkPipeline GRAPHICS_PIPELINE_CURRENT_VK = VK_NULL_HANDLE;
 		VkBuffer VERTEX_BUFFER_VK = VK_NULL_HANDLE;
 		uint32_t GRAPHICS_QUEUE_FAMILY_INDEX_VK = UINT32_MAX;
 		VkCommandPool COMMAND_POOL_VK = nullptr;
@@ -366,6 +369,10 @@ void vkRender()
 
 	//Rendering commands
 
+	vkCmdBindPipeline(EP.RND.COMMAND_BUFFER_VK, VK_PIPELINE_BIND_POINT_GRAPHICS, EP.RND.GRAPHICS_PIPELINE_CURRENT_VK);
+
+	vkCmdDraw(EP.RND.COMMAND_BUFFER_VK, 3, 1, 0, 0);
+
 	vkQueuePresentKHR(EP.RND.GRAPHICS_QUEUE_VK, &EP.RND.PRESENT_INFO_VK);
 
 	vkCmdEndRenderPass(EP.RND.COMMAND_BUFFER_VK);
@@ -403,13 +410,16 @@ bool isDeviceSuitable(VkPhysicalDevice device)
 
 VkShaderModule createShaderModule(VkDevice device, const std::vector<char>& code) 
 {
+	
 	VkShaderModuleCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	createInfo.codeSize = code.size();
 	createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+	cout << endl << createInfo.pCode << "-code";
+	VkShaderModule shaderModule  = VK_NULL_HANDLE;
 
-	VkShaderModule shaderModule;
-	if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+	if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+	{
 		throw std::runtime_error("Failed to create shader module!");
 	}
 
@@ -479,7 +489,7 @@ bool initVulkan()
 	std::vector<VkPhysicalDevice> devices(deviceCount);
 	vkEnumeratePhysicalDevices(EP.RND.INSTANCE_VK, &deviceCount, devices.data());
 
-	for (const auto& device : devices) 
+	for (const auto& device : devices)
 	{
 		if (isDeviceSuitable(device))
 		{
@@ -488,8 +498,6 @@ bool initVulkan()
 		}
 	}
 
-	vkGetPhysicalDeviceProperties(EP.RND.PHYSICAL_DEVICE_VK, &EP.RND.DEVICE_PROPERTIES_VK);
-	vkGetPhysicalDeviceFeatures(EP.RND.PHYSICAL_DEVICE_VK, &EP.RND.DEVICE_FEATURES_VK);
 
 	VkDeviceCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -500,7 +508,7 @@ bool initVulkan()
 	vkGetPhysicalDeviceQueueFamilyProperties(EP.RND.PHYSICAL_DEVICE_VK, &queueFamilyCount, queueFamilies.data());
 
 	// Find a queue family that supports the required capabilities
-	
+
 	for (uint32_t i = 0; i < queueFamilyCount; i++) {
 		const VkQueueFamilyProperties& queueFamily = queueFamilies[i];
 		if (queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
@@ -526,7 +534,8 @@ bool initVulkan()
 	std::vector<const char*> deviceExtensionNames = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
 
-	VkPhysicalDeviceFeatures deviceFeatures = {}; // Optional features to enable on the device
+	VkPhysicalDeviceFeatures deviceFeatures = {};
+	deviceFeatures.fragmentStoresAndAtomics = VK_TRUE;
 
 	VkDeviceCreateInfo deviceCreateInfo = {};
 	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -537,6 +546,11 @@ bool initVulkan()
 	deviceCreateInfo.enabledExtensionCount = 1;
 	deviceCreateInfo.ppEnabledExtensionNames = deviceExtensionNames.data();
 	deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
+
+
+	vkGetPhysicalDeviceProperties(EP.RND.PHYSICAL_DEVICE_VK, &EP.RND.DEVICE_PROPERTIES_VK);
+	vkGetPhysicalDeviceFeatures(EP.RND.PHYSICAL_DEVICE_VK, &EP.RND.DEVICE_FEATURES_VK);
+
 
 	//create a logical device using parameters : deviceFeatures,EP.RND.PHYSICAL_DEVICE_VK
 
@@ -804,7 +818,7 @@ bool initVulkan()
 
 	// Create a descriptor set layout for the uniform values
 	VkDescriptorSetLayoutBinding layoutBinding = {};
-	layoutBinding.binding = 0;
+	layoutBinding.binding = 1;
 	layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	layoutBinding.descriptorCount = 1;
 	layoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
@@ -838,55 +852,16 @@ bool initVulkan()
 		return result;
 	}
 
-	// Load the shader modules
-	std::vector<char> vertShaderCode = readFile("shaders/vertex_shader.spv");
-	std::vector<char> fragShaderCode = readFile("shaders/fragment_shader.spv");
+	//asdf 
 
-	EP.RND.VERT_SHADER_MODULE = createShaderModule(EP.RND.LOGICAL_DEVICE_VK, vertShaderCode);
-	EP.RND.FRAG_SHADER_MODULE = createShaderModule(EP.RND.LOGICAL_DEVICE_VK, fragShaderCode);
-
-	// Create the pipeline shader stages
-	VkPipelineShaderStageCreateInfo vertexShaderStageCreateInfo = {};
-	vertexShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	vertexShaderStageCreateInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	vertexShaderStageCreateInfo.module = EP.RND.VERT_SHADER_MODULE;
-	vertexShaderStageCreateInfo.pName = "main";
-
-	VkPipelineShaderStageCreateInfo fragmentShaderStageCreateInfo = {};
-	fragmentShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	fragmentShaderStageCreateInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	fragmentShaderStageCreateInfo.module = EP.RND.FRAG_SHADER_MODULE;
-	fragmentShaderStageCreateInfo.pName = "main";
-
-		
-	VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
-
-	// Create the pipeline using the pipeline layout and the render pass
-
-	// Define shader stage create info structures
-	VkPipelineShaderStageCreateInfo vertShaderStageInfo = {};
-	vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	vertShaderStageInfo.module = EP.RND.VERT_SHADER_MODULE; // previously created vertex shader module
-	vertShaderStageInfo.pName = "main";
-
-	VkPipelineShaderStageCreateInfo fragShaderStageInfo = {};
-	fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	fragShaderStageInfo.module = EP.RND.FRAG_SHADER_MODULE; // previously created fragment shader module
-	fragShaderStageInfo.pName = "main";
-
-	// Create array of shader stage create info structures
-	VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	vertexInputInfo.vertexBindingDescriptionCount = 0; // Specify the number of vertex binding descriptions
 	vertexInputInfo.pVertexBindingDescriptions = nullptr; // Pointer to an array of vertex binding descriptions
 	vertexInputInfo.vertexAttributeDescriptionCount = 0; // Specify the number of vertex attribute descriptions
-	vertexInputInfo.pVertexAttributeDescriptions = nullptr; // Pointer to an array of vertex attribute descriptions
+	vertexInputInfo.pVertexAttributeDescriptions = nullptr; // Pointer to an array of vertex attribute descriptions 
 
-	
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -917,7 +892,7 @@ bool initVulkan()
 	rasterizer.rasterizerDiscardEnable = VK_FALSE;
 	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 	rasterizer.lineWidth = 1.0f;
-	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+	//rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
 	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rasterizer.depthBiasEnable = VK_FALSE;
 
@@ -952,6 +927,29 @@ bool initVulkan()
 	colorBlending.blendConstants[2] = 0.0f;
 	colorBlending.blendConstants[3] = 0.0f;
 
+
+	EP.RND.VERT_SHADER_MODULE = createShaderModule(EP.RND.LOGICAL_DEVICE_VK, readFile("shaders/colored_triangle_vertex.spv"));
+	EP.RND.FRAG_SHADER_MODULE = createShaderModule(EP.RND.LOGICAL_DEVICE_VK, readFile("shaders/colored_triangle_frag.spv"));
+
+	// Define shader stage create info structures
+	VkPipelineShaderStageCreateInfo vertShaderStageInfo = {};
+	vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vertShaderStageInfo.module = EP.RND.VERT_SHADER_MODULE;
+	vertShaderStageInfo.pName = "main";
+
+	VkPipelineShaderStageCreateInfo fragShaderStageInfo = {};
+	fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	fragShaderStageInfo.module = EP.RND.FRAG_SHADER_MODULE;
+	fragShaderStageInfo.pName = "main";
+
+	// Create array of shader stage create info structures
+
+	VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+
+	VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
+
 	pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	pipelineCreateInfo.stageCount = 2;
 	pipelineCreateInfo.pStages = shaderStages;
@@ -967,15 +965,64 @@ bool initVulkan()
 	pipelineCreateInfo.subpass = 0;
 	pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-	result = vkCreateGraphicsPipelines(EP.RND.LOGICAL_DEVICE_VK, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &EP.RND.GRAPHICS_PIPELINE_VK);
-	if (result != VK_SUCCESS) {
+
+	//Create pipeline 1
+
+	EP.TEMP.RESULT_VK = vkCreateGraphicsPipelines(EP.RND.LOGICAL_DEVICE_VK, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &EP.RND.GRAPHICS_PIPELINE_VK);
+	if (EP.TEMP.RESULT_VK != VK_SUCCESS) {
 		// Handle pipeline creation error
 		vkDestroyPipelineLayout(EP.RND.LOGICAL_DEVICE_VK, pipelineLayout, nullptr);
 		vkDestroyDescriptorSetLayout(EP.RND.LOGICAL_DEVICE_VK, descriptorSetLayout, nullptr);
 		vkDestroySwapchainKHR(EP.RND.LOGICAL_DEVICE_VK, EP.RND.SWAPCHAIN_VK, nullptr);
-		return result;
+		return EP.TEMP.RESULT_VK;
 	}
 
+
+	EP.RND.VERT_SHADER_MODULE = createShaderModule(EP.RND.LOGICAL_DEVICE_VK, readFile("shaders/vertex_shader3.spv"));
+	EP.RND.FRAG_SHADER_MODULE = createShaderModule(EP.RND.LOGICAL_DEVICE_VK, readFile("shaders/fs.spv"));
+
+	// Define shader stage create info structures
+	vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vertShaderStageInfo.module = EP.RND.VERT_SHADER_MODULE;
+	vertShaderStageInfo.pName = "main";
+
+	fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	fragShaderStageInfo.module = EP.RND.FRAG_SHADER_MODULE;
+	fragShaderStageInfo.pName = "main";
+
+	// Create array of shader stage create info structures
+
+	VkPipelineShaderStageCreateInfo shaderStages2[] = { vertShaderStageInfo, fragShaderStageInfo };
+
+	pipelineCreateInfo = {};
+
+	pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pipelineCreateInfo.stageCount = 2;
+	pipelineCreateInfo.pStages = shaderStages2;
+	pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
+	pipelineCreateInfo.pInputAssemblyState = &inputAssembly;
+	pipelineCreateInfo.pViewportState = &viewportState;
+	pipelineCreateInfo.pRasterizationState = &rasterizer;
+	pipelineCreateInfo.pMultisampleState = &multisampling;
+	pipelineCreateInfo.pDepthStencilState = &depthStencil;
+	pipelineCreateInfo.pColorBlendState = &colorBlending;
+	pipelineCreateInfo.layout = pipelineLayout;
+	pipelineCreateInfo.renderPass = EP.RND.RENDER_PASS_VK;
+	pipelineCreateInfo.subpass = 0;
+	pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
+
+	//Create pipeline 2
+
+	EP.TEMP.RESULT_VK = vkCreateGraphicsPipelines(EP.RND.LOGICAL_DEVICE_VK, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &EP.RND.GRAPHICS_PIPELINE_2_VK);
+	if (EP.TEMP.RESULT_VK != VK_SUCCESS) {
+		// Handle pipeline creation error
+		vkDestroyPipelineLayout(EP.RND.LOGICAL_DEVICE_VK, pipelineLayout, nullptr);
+		vkDestroyDescriptorSetLayout(EP.RND.LOGICAL_DEVICE_VK, descriptorSetLayout, nullptr);
+		vkDestroySwapchainKHR(EP.RND.LOGICAL_DEVICE_VK, EP.RND.SWAPCHAIN_VK, nullptr);
+		return EP.TEMP.RESULT_VK;
+	}
 
 	VkCommandPoolCreateInfo poolCreateInfo = {};
 	poolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -1055,8 +1102,7 @@ bool initVulkan()
 	EP.RND.SUBMIT_INFO_VK.signalSemaphoreCount = 1;
 	EP.RND.SUBMIT_INFO_VK.pSignalSemaphores = &EP.RND.SEMAPHORE_IMAGE_AVAILABLE_VK;
 
-
-	vkCmdBindPipeline(EP.RND.COMMAND_BUFFER_VK, VK_PIPELINE_BIND_POINT_GRAPHICS, EP.RND.GRAPHICS_PIPELINE_VK);
+	EP.RND.GRAPHICS_PIPELINE_CURRENT_VK = EP.RND.GRAPHICS_PIPELINE_VK;
 
 
 	return true;
@@ -1084,8 +1130,8 @@ VkInstance createVkInstance(SDL_Window* window)
 	createInfo.ppEnabledExtensionNames = extensionNames.data();
 
 	VkInstance instance = VK_NULL_HANDLE;
-	VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
-	if (result != VK_SUCCESS) {
+	EP.RND.RESULT_VK = vkCreateInstance(&createInfo, nullptr, &instance);
+	if (EP.RND.RESULT_VK != VK_SUCCESS) {
 		// Error handling
 		return VK_NULL_HANDLE;
 	}
@@ -2082,7 +2128,10 @@ void testEnviroment()
 			}
 			else if (e.type == SDL_KEYDOWN)
 			{
-				//cout << endl << "key pressed";
+				if (e.key.keysym.sym == SDLK_SPACE)
+				{
+					EP.RND.GRAPHICS_PIPELINE_CURRENT_VK = (EP.RND.GRAPHICS_PIPELINE_2_VK == EP.RND.GRAPHICS_PIPELINE_CURRENT_VK) ? (EP.RND.GRAPHICS_PIPELINE_VK) : EP.RND.GRAPHICS_PIPELINE_2_VK;
+				}	
 			}
 		}
 		gWindow.handleEvent(e);
