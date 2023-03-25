@@ -171,6 +171,7 @@
     <ClCompile Include="LWindow.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="TheWizard.cpp" />
+    <ClCompile Include="Vulkan.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LAnim.h" />
@@ -184,6 +185,7 @@
     <ClInclude Include="LTimer.h" />
     <ClInclude Include="LWindow.h" />
     <ClInclude Include="Shader.h" />
+    <ClInclude Include="Vulkan.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

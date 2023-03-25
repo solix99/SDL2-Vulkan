@@ -1,6 +1,5 @@
 // TheWizard.cpp : This file contains the 'main' function. Program execution begins and ends there.
 
-
 #include <winsock2.h>
 //#include <ws2tcpip.h>
 #include <windows.h>
@@ -33,6 +32,9 @@
 #include <vulkan.h>
 #include <GLSL.std.450.h>
 #include "Shader.h"
+#include <functional>
+#include <deque>
+#include "Vulkan.h"
 
 WSADATA wData;
 #pragma comment(lib, "Ws2_32.lib")
@@ -60,7 +62,6 @@ struct engineThreads
 	SDL_Thread* PHYSICS = NULL;
 
 }THREAD;
-
 
 struct MEMEORY
 {
@@ -182,6 +183,7 @@ SDL_Event e;
 
 LServer gServer;
 LWindow gWindow(DEFAULT_RESOLUTION_WIDTH, DEFAULT_RESOLUTION_HEIGHT);
+Vulkan VK(gWindow);
 
 LPawn CLIENT;
 LPawn Player[MAX_PLAYER_ENTITY];
@@ -214,6 +216,7 @@ LButton register_button;
 LTimer typeLine_timer;
 LTimer popup_timer;
 LTimer fireball_attack_timer;
+
 
 float scaleX = 0.5625f;
 float scaleY = 1.7777f;
@@ -355,7 +358,7 @@ void recordRenderCommands(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 void vkRender()
 {
 	// Acquire the next image from the swap chain
-	vkAcquireNextImageKHR(EP.RND.LOGICAL_DEVICE_VK, EP.RND.SWAPCHAIN_VK, UINT64_MAX, EP.RND.SEMAPHORE_IMAGE_AVAILABLE_VK, VK_NULL_HANDLE, &EP.RND.IMAGE_INDEX_VK);
+	vkAcquireNextImageKHR(VK.getLogicalDevice(), EP.RND.SWAPCHAIN_VK, UINT64_MAX, EP.RND.SEMAPHORE_IMAGE_AVAILABLE_VK, VK_NULL_HANDLE, &EP.RND.IMAGE_INDEX_VK);
 
 	EP.RND.RENDER_PASS_BEGIN_INFO_VK.framebuffer = EP.RND.SWAPCHAIN_FRAMEBUFFER_VK[EP.RND.IMAGE_INDEX_VK];
 	
@@ -851,9 +854,6 @@ bool initVulkan()
 		vkDestroySwapchainKHR(EP.RND.LOGICAL_DEVICE_VK, EP.RND.SWAPCHAIN_VK, nullptr);
 		return result;
 	}
-
-	//asdf 
-
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -1805,6 +1805,8 @@ bool init()
 	return success;
 }
 
+
+
 bool connectToGameServer()
 {
 	result = NULL;
@@ -2057,6 +2059,10 @@ bool loadMedia()
 void close()
 {
 
+
+
+
+
 	Mix_FreeChunk(bluebullet_sound);
 	Mix_FreeMusic(gMusic);
 	gMusic = NULL;
@@ -2141,17 +2147,20 @@ void testEnviroment()
 	}
 }
 
-
 int main(int argc, char* args[])
 {
+	
+	SDL_Delay(2000);
+
+
 	if (!init())
 	{
 		printf("Failed to initialize SDL!\n");
 	}
-	else if (!initVulkan())
-	{
-		printf("Failed to initialize VULKAN!\n");
-	}
+	//else if (!initVulkan())
+	//{
+	//	printf("Failed to initialize VULKAN!\n");
+	//}
 	else
 	{
 		if (!loadMedia())

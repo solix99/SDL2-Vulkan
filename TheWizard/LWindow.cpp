@@ -4,11 +4,6 @@
 LWindow::LWindow(int w, int h)
 	:mWidth(w), mHeight(h)
 {
-	//ctor
-}
-
-bool LWindow::init()
-{
 	//Create window
 	if (mFullScreen)
 	{
@@ -18,8 +13,6 @@ bool LWindow::init()
 	{
 		mWindow = SDL_CreateWindow("The Wizard", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, mWidth, mHeight, SDL_WINDOW_VULKAN);
 	}
-
-	
 	if (mWindow != NULL)
 	{
 		mMouseFocus = true;
@@ -51,7 +44,11 @@ bool LWindow::init()
 		std::cout << std::endl << "Window could not be created! SDL Error: \n" << SDL_GetError();
 	}
 
-	return mWindow != NULL && mRenderer != NULL;
+}
+
+bool LWindow::init()
+{
+	return true;
 }
 
 SDL_Window* LWindow::getWindow()

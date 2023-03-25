@@ -8,26 +8,26 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
-#include <KHR/khrplatform.h>
-#include <glslang/Include/glslang_c_interface.h>
-#include <glslang/SPIRV/spirv.hpp>
-#include <glslang/Public/ResourceLimits.h>
-#include <glslang/Public/resource_limits_c.h>
-
+#include <SDL_vulkan.h>
+#include <vulkan.h>
 #include <vector>
+#include <iostream>
+
+
+using namespace std;
 
 class Shader
 {
 public:
-    Shader(const char* vertexPath, const char* fragmentPath);
+    Shader();
 
+    static VkShaderModule createShaderModule(VkDevice device, const std::vector<char>& code);
+    static std::vector<char> readFile(const std::string& filename);
 
-    void use();
-    void setBool(const std::string& name, bool value) const;
-    void setInt(const std::string& name, int value) const;
-    void setFloat(const std::string& name, float value) const;
+private:
 
-    unsigned int ID;
+    //VkDevice DEVICE_M;
+
 };
 
 #endif
