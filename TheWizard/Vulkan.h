@@ -21,7 +21,25 @@ public:
 
 	bool initVulkan();
 	bool isDeviceSuitable(VkPhysicalDevice) const; 
-	VkDevice getLogicalDevice() const;
+	VkDevice getLogicalDevice() ;
+	//	create get function for COMMAND_BUFFER_VK, SWAPCHAIN_VK, SEMAPHORE_IMAGE_AVAILABLE_VK, IMAGE_INDEX_VK, SWAPCHAIN_FRAMEBUFFER_VK, SUBMIT_INFO_VK, COMMAND_BUFFER_VK
+	VkCommandBuffer getCommandBuffer() const;
+	VkSwapchainKHR getSwapchain() const;
+	VkSemaphore getSemaphoreImageAvailable() const;
+	uint32_t *getImageIndex();
+	VkFramebuffer getSwapchainFramebuffer(int i) const;
+	VkSubmitInfo* getSubmitInfo();
+	VkPipeline getGraphicsPipeline() const;
+	VkQueue getGraphicsQueue() const;
+	VkRenderPassBeginInfo *getRenderPassBeginInfo() ;
+	VkCommandBufferBeginInfo *getCommandBufferBeginInfo() ;
+	VkSemaphore getSemaphoreAvailable() const;
+	VkPresentInfoKHR *getPresentInfo() ;
+	VkFence *getFenceRenderingFinished();
+
+	void switchPipeline();
+	void setCurrentGraphicsPipeline(VkPipeline pipeline);
+
 
 private:
 

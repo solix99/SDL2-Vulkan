@@ -38,11 +38,75 @@ Vulkan::Vulkan(LWindow &window)
 		cout << endl << "Surface creation failed";
 	}
 
+	initVulkan();
 }
 
-VkDevice Vulkan::getLogicalDevice() const
+void Vulkan::switchPipeline()
+{
+	GRAPHICS_PIPELINE_CURRENT_VK = (GRAPHICS_PIPELINE_2_VK == GRAPHICS_PIPELINE_CURRENT_VK) ? GRAPHICS_PIPELINE_VK : GRAPHICS_PIPELINE_2_VK;
+}
+
+void Vulkan::setCurrentGraphicsPipeline(VkPipeline pipeline)
+{
+	GRAPHICS_PIPELINE_VK = pipeline;
+}
+
+VkSubmitInfo *Vulkan::getSubmitInfo(){
+	return &SUBMIT_INFO_VK;
+}
+
+VkCommandBuffer Vulkan::getCommandBuffer() const {
+	return COMMAND_BUFFER_VK;
+}
+
+VkPipeline Vulkan::getGraphicsPipeline() const {
+	return GRAPHICS_PIPELINE_CURRENT_VK;
+}
+
+VkQueue Vulkan::getGraphicsQueue() const {
+	return GRAPHICS_QUEUE_VK;
+}
+
+VkRenderPassBeginInfo* Vulkan::getRenderPassBeginInfo()  {
+	return &RENDER_PASS_BEGIN_INFO_VK;
+}
+
+VkCommandBufferBeginInfo* Vulkan::getCommandBufferBeginInfo()  {
+	return &COMMAND_BUFFER_BEGIN_INFO_VK;
+}
+
+VkSemaphore Vulkan::getSemaphoreAvailable() const {
+	return SEMAPHORE_IMAGE_AVAILABLE_VK;
+}
+
+VkPresentInfoKHR* Vulkan::getPresentInfo() {
+	return &PRESENT_INFO_VK;
+}
+
+VkSwapchainKHR Vulkan::getSwapchain() const {
+	return SWAPCHAIN_VK;
+}
+
+VkSemaphore Vulkan::getSemaphoreImageAvailable() const {
+	return SEMAPHORE_IMAGE_AVAILABLE_VK;
+}
+
+uint32_t *Vulkan::getImageIndex() {
+	return &IMAGE_INDEX_VK;
+}
+
+VkFramebuffer Vulkan::getSwapchainFramebuffer(int i) const {
+	return SWAPCHAIN_FRAMEBUFFER_VK[i];
+}
+
+VkDevice Vulkan::getLogicalDevice()
 {
 	return LOGICAL_DEVICE_VK;
+}
+
+VkFence *Vulkan::getFenceRenderingFinished()
+{
+	return &FENCE_RENDERING_FINISHED_VK;
 }
 
 bool Vulkan::isDeviceSuitable(VkPhysicalDevice device) const

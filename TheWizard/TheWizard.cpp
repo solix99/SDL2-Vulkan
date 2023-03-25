@@ -357,32 +357,34 @@ void recordRenderCommands(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
 void vkRender()
 {
-	// Acquire the next image from the swap chain
-	vkAcquireNextImageKHR(VK.getLogicalDevice(), EP.RND.SWAPCHAIN_VK, UINT64_MAX, EP.RND.SEMAPHORE_IMAGE_AVAILABLE_VK, VK_NULL_HANDLE, &EP.RND.IMAGE_INDEX_VK);
 
-	EP.RND.RENDER_PASS_BEGIN_INFO_VK.framebuffer = EP.RND.SWAPCHAIN_FRAMEBUFFER_VK[EP.RND.IMAGE_INDEX_VK];
 	
-	vkQueueSubmit(EP.RND.GRAPHICS_QUEUE_VK, 1, &EP.RND.SUBMIT_INFO_VK, VK_NULL_HANDLE);
 
-	vkWaitForFences(EP.RND.LOGICAL_DEVICE_VK, 1, &EP.RND.FENCE_RENDERING_FINISHED_VK, VK_TRUE, UINT64_MAX);
+	vkAcquireNextImageKHR(VK.getLogicalDevice(), VK.getSwapchain(), UINT64_MAX, VK.getSemaphoreAvailable(), VK_NULL_HANDLE, VK.getImageIndex());
 
-	vkBeginCommandBuffer(EP.RND.COMMAND_BUFFER_VK, &EP.RND.COMMAND_BUFFER_BEGIN_INFO_VK);
+	VK.getRenderPassBeginInfo()->framebuffer = VK.getSwapchainFramebuffer(*VK.getImageIndex());
 
-	vkCmdBeginRenderPass(EP.RND.COMMAND_BUFFER_VK, &EP.RND.RENDER_PASS_BEGIN_INFO_VK, VK_SUBPASS_CONTENTS_INLINE);
+	vkQueueSubmit(VK.getGraphicsQueue(), 1, VK.getSubmitInfo(), VK_NULL_HANDLE);
+
+	vkWaitForFences(VK.getLogicalDevice(), 1, VK.getFenceRenderingFinished(), VK_TRUE, UINT64_MAX);
+
+	vkBeginCommandBuffer(VK.getCommandBuffer(), VK.getCommandBufferBeginInfo());
+
+	vkCmdBeginRenderPass(VK.getCommandBuffer(), VK.getRenderPassBeginInfo(), VK_SUBPASS_CONTENTS_INLINE);
 
 	//Rendering commands
+	vkCmdBindPipeline(VK.getCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, VK.getGraphicsPipeline());
+	
 
-	vkCmdBindPipeline(EP.RND.COMMAND_BUFFER_VK, VK_PIPELINE_BIND_POINT_GRAPHICS, EP.RND.GRAPHICS_PIPELINE_CURRENT_VK);
+	vkCmdDraw(VK.getCommandBuffer(), 3, 1, 0, 0);
 
-	vkCmdDraw(EP.RND.COMMAND_BUFFER_VK, 3, 1, 0, 0);
+	vkQueuePresentKHR(VK.getGraphicsQueue(), VK.getPresentInfo());
 
-	vkQueuePresentKHR(EP.RND.GRAPHICS_QUEUE_VK, &EP.RND.PRESENT_INFO_VK);
+	vkCmdEndRenderPass(VK.getCommandBuffer());
 
-	vkCmdEndRenderPass(EP.RND.COMMAND_BUFFER_VK);
+	vkEndCommandBuffer(VK.getCommandBuffer());
 
-	vkEndCommandBuffer(EP.RND.COMMAND_BUFFER_VK);
-
-	vkResetFences(EP.RND.LOGICAL_DEVICE_VK, 1, &EP.RND.FENCE_RENDERING_FINISHED_VK);
+	vkResetFences(VK.getLogicalDevice(), 1, VK.getFenceRenderingFinished());
 
 }
 
@@ -429,7 +431,8 @@ VkShaderModule createShaderModule(VkDevice device, const std::vector<char>& code
 	return shaderModule;
 }
 
-VkMemoryPropertyFlags getRequiredMemoryFlags(VkBufferUsageFlags usageFlags) {
+VkMemoryPropertyFlags getRequiredMemoryFlags(VkBufferUsageFlags usageFlags) 
+{
 	VkMemoryPropertyFlags requiredFlags = 0;
 
 	if (usageFlags & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) {
@@ -449,7 +452,8 @@ VkMemoryPropertyFlags getRequiredMemoryFlags(VkBufferUsageFlags usageFlags) {
 	return requiredFlags;
 }
 
-std::vector<char> readFile(const std::string& filename) {
+std::vector<char> readFile(const std::string& filename)
+{
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
 	if (!file.is_open()) {
@@ -2136,7 +2140,7 @@ void testEnviroment()
 			{
 				if (e.key.keysym.sym == SDLK_SPACE)
 				{
-					EP.RND.GRAPHICS_PIPELINE_CURRENT_VK = (EP.RND.GRAPHICS_PIPELINE_2_VK == EP.RND.GRAPHICS_PIPELINE_CURRENT_VK) ? (EP.RND.GRAPHICS_PIPELINE_VK) : EP.RND.GRAPHICS_PIPELINE_2_VK;
+					VK.switchPipeline();
 				}	
 			}
 		}
@@ -2150,8 +2154,6 @@ void testEnviroment()
 int main(int argc, char* args[])
 {
 	
-	SDL_Delay(2000);
-
 
 	if (!init())
 	{
