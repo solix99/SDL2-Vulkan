@@ -106,7 +106,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)\Dependency\openGL\include;$(ProjectDir)\Dependency\MySQL\Connector C++ 8.0\include;$(ProjectDir)\Dependency\SDL2_image-2.0.5\include;$(ProjectDir)\Dependency\SDL2_mixer-2.0.4\include;$(ProjectDir)\Dependency\SDL2_ttf-2.0.15\include;$(ProjectDir)\Dependency\SDL2-2.26.4\include;$(ProjectDir)\Dependency\vulkan;$(ProjectDir)\Dependency\MySQL\MySQL Server 8.0\include;$(ProjectDir)\Dependency\gslang\\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\Dependency\glm;$(ProjectDir)\Dependency\openGL\include;$(ProjectDir)\Dependency\MySQL\Connector C++ 8.0\include;$(ProjectDir)\Dependency\SDL2_image-2.0.5\include;$(ProjectDir)\Dependency\SDL2_mixer-2.0.4\include;$(ProjectDir)\Dependency\SDL2_ttf-2.0.15\include;$(ProjectDir)\Dependency\SDL2-2.26.4\include;$(ProjectDir)\Dependency\vulkan;$(ProjectDir)\Dependency\MySQL\MySQL Server 8.0\include;$(ProjectDir)\Dependency\gslang\\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -169,6 +169,7 @@
     <ClCompile Include="Ltexture.cpp" />
     <ClCompile Include="LTimer.cpp" />
     <ClCompile Include="LWindow.cpp" />
+    <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="TheWizard.cpp" />
     <ClCompile Include="Vulkan.cpp" />
@@ -184,7 +185,9 @@
     <ClInclude Include="Ltexture.h" />
     <ClInclude Include="LTimer.h" />
     <ClInclude Include="LWindow.h" />
+    <ClInclude Include="Mesh.h" />
     <ClInclude Include="Shader.h" />
+    <ClInclude Include="Vars.h" />
     <ClInclude Include="Vulkan.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

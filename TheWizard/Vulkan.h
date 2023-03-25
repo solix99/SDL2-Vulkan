@@ -11,14 +11,38 @@
 #include "Shader.h"
 #include <SDL.h>
 #include "LWindow.h"
+#include <functional>
+#include <deque>
+#include <vk_mem_alloc.h>
 
 using namespace std;
 
-class Vulkan
+struct DeletionQueue
+{
+	std::deque<std::function<void()>> deletors;
+
+	void push_function(std::function<void()>&& function) {
+		deletors.push_back(function);
+	}
+
+	void flush() {
+		// reverse iterate the deletion queue to execute all the functions
+		for (auto it = deletors.rbegin(); it != deletors.rend(); it++) {
+			(*it)(); //call the function
+		}
+
+		deletors.clear();
+	}
+};
+
+class Mesh;
+
+static class Vulkan
 {
 public:
 	Vulkan(LWindow &window);
 
+	bool cleanup();
 	bool initVulkan();
 	bool isDeviceSuitable(VkPhysicalDevice) const; 
 	VkDevice getLogicalDevice() ;
@@ -36,9 +60,11 @@ public:
 	VkSemaphore getSemaphoreAvailable() const;
 	VkPresentInfoKHR *getPresentInfo() ;
 	VkFence *getFenceRenderingFinished();
-
+	
 	void switchPipeline();
 	void setCurrentGraphicsPipeline(VkPipeline pipeline);
+
+	
 
 
 private:
@@ -76,6 +102,10 @@ private:
 	VkShaderModule VERT_SHADER_MODULE = VK_NULL_HANDLE;
 	VkShaderModule FRAG_SHADER_MODULE = VK_NULL_HANDLE;
 	LWindow *WINDOW;
+	DeletionQueue _mainDeletionQueue;
+	VmaAllocator ALLOCATOR;
+	VmaAllocatorCreateInfo ALLOCATOR_INFO = {};
+	VkPipeline GRAPHICS_MESH_PIPELINE_VK;
 
 };
 

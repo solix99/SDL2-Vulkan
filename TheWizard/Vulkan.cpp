@@ -41,6 +41,9 @@ Vulkan::Vulkan(LWindow &window)
 	initVulkan();
 }
 
+
+
+
 void Vulkan::switchPipeline()
 {
 	GRAPHICS_PIPELINE_CURRENT_VK = (GRAPHICS_PIPELINE_2_VK == GRAPHICS_PIPELINE_CURRENT_VK) ? GRAPHICS_PIPELINE_VK : GRAPHICS_PIPELINE_2_VK;
@@ -109,6 +112,13 @@ VkFence *Vulkan::getFenceRenderingFinished()
 	return &FENCE_RENDERING_FINISHED_VK;
 }
 
+bool Vulkan::cleanup()
+{
+
+	//to do
+	return true;
+}
+
 bool Vulkan::isDeviceSuitable(VkPhysicalDevice device) const
 {
 	VkPhysicalDeviceProperties deviceProperties;
@@ -122,6 +132,8 @@ bool Vulkan::isDeviceSuitable(VkPhysicalDevice device) const
 
 bool Vulkan::initVulkan()
 {
+
+
 	uint32_t deviceCount = 0;
 
 	vkEnumeratePhysicalDevices(INSTANCE_VK, &deviceCount, nullptr);
@@ -744,5 +756,12 @@ bool Vulkan::initVulkan()
 	SUBMIT_INFO_VK.pSignalSemaphores = &SEMAPHORE_IMAGE_AVAILABLE_VK;
 
 	GRAPHICS_PIPELINE_CURRENT_VK = GRAPHICS_PIPELINE_VK;
+
+	//VMA
+
+	ALLOCATOR_INFO.physicalDevice = PHYSICAL_DEVICE_VK;
+	ALLOCATOR_INFO.device = LOGICAL_DEVICE_VK;
+	ALLOCATOR_INFO.instance = INSTANCE_VK;
+	vmaCreateAllocator(&ALLOCATOR_INFO, &ALLOCATOR);
 
 }
