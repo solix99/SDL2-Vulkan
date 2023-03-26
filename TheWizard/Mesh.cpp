@@ -13,35 +13,36 @@ Mesh::Mesh(Vulkan* vulkan)
 
     loadMesh();
 
-    //we will have just 1 vertex buffer binding, with a per-vertex rate
-    bindingDescription.binding = 0;
-    bindingDescription.stride = sizeof(Vertex);
-    bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-    //Position will be stored at Location 0
-    VkVertexInputAttributeDescription positionAttribute = {};
-    positionAttribute.binding = 0;
-    positionAttribute.location = 0;
-    positionAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-    positionAttribute.offset = offsetof(Vertex, position);
-
-    //Normal will be stored at Location 1
-    VkVertexInputAttributeDescription normalAttribute = {};
-    normalAttribute.binding = 0;
-    normalAttribute.location = 1;
-    normalAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-    normalAttribute.offset = offsetof(Vertex, normal);
-
-    //Color will be stored at Location 2
-    VkVertexInputAttributeDescription colorAttribute = {};
-    colorAttribute.binding = 0;
-    colorAttribute.location = 2;
-    colorAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-    colorAttribute.offset = offsetof(Vertex, color);
-
-    attributeDescriptions[0] = positionAttribute;
-    attributeDescriptions[1] = normalAttribute;
-    attributeDescriptions[2] = colorAttribute;
+    ////we will have just 1 vertex buffer binding, with a per-vertex rate
+    //BINDING_DESCRIPTION.binding = 0;
+    //BINDING_DESCRIPTION.stride = sizeof(Vertex);
+    //BINDING_DESCRIPTION.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    //
+    //
+    ////Position will be stored at Location 0
+    //VkVertexInputAttributeDescription positionAttribute = {};
+    //positionAttribute.binding = 0;
+    //positionAttribute.location = 0;
+    //positionAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+    //positionAttribute.offset = offsetof(Vertex, position) + 1;
+    //
+    ////Normal will be stored at Location 1
+    //VkVertexInputAttributeDescription normalAttribute = {};
+    //normalAttribute.binding = 0;
+    //normalAttribute.location = 1;
+    //normalAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+    //normalAttribute.offset = offsetof(Vertex, normal);
+    //
+    ////Color will be stored at Location 2
+    //VkVertexInputAttributeDescription colorAttribute = {};
+    //colorAttribute.binding = 0;
+    //colorAttribute.location = 2;
+    //colorAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+    //colorAttribute.offset = offsetof(Vertex, color);
+    //
+    //attributeDescriptions[0] = positionAttribute;
+    //attributeDescriptions[1] = normalAttribute;
+    //attributeDescriptions[2] = colorAttribute;
 
 }
 
@@ -65,7 +66,7 @@ VkCommandBuffer Mesh::beginSingleTimeCommands()
     return commandBuffer;
 }
 
-void Mesh::endSingleTimeCommands(VkCommandBuffer commandBuffer) 
+void Mesh::endSingleTimeCommands(VkCommandBuffer commandBuffer)
 {
     vkEndCommandBuffer(commandBuffer);
 
@@ -79,7 +80,6 @@ void Mesh::endSingleTimeCommands(VkCommandBuffer commandBuffer)
 
     vkFreeCommandBuffers(VK->getLogicalDevice(), VK->getCommandPool(), 1, &commandBuffer);
 }
-
 
 uint32_t Mesh::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
     VkPhysicalDeviceMemoryProperties memProperties;
@@ -114,22 +114,11 @@ void Mesh::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
 }
 
 
-VkBuffer *Mesh::getVertexBuffer()
+VkBuffer* Mesh::getVertexBuffer()
 {
-   // cout << endl << VERTEX_BUFFER.BUFFER;
+    // cout << endl << VERTEX_BUFFER.BUFFER;
     return &VERTEX_BUFFER.BUFFER;
 
-}
-
-VkVertexInputBindingDescription* Mesh::getBindingDescription()
-{
-    return Mesh::Vertex::getBindingDescription();
-}
-
-
-array<VkVertexInputAttributeDescription, 3> Mesh::getAttributeDescription()
-{
-    return Mesh::Vertex::getAttributeDescriptions();
 }
 
 
@@ -151,6 +140,17 @@ void Mesh::loadMesh()
     uploadMesh();
 }
 
+//VkVertexInputBindingDescription* Mesh::Vertex::getBindingDescription()
+//
+//   VkVertexInputBindingDescription bindingDescription = {};
+//   bindingDescription.binding = 0;
+//   bindingDescription.stride = sizeof(Vertex);
+//   bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+//
+//   return &bindingDescription;
+//
+
+
 
 void Mesh::uploadMesh()
 {
@@ -169,10 +169,10 @@ void Mesh::uploadMesh()
     //allocate the buffer  &mesh._vertexBuffer._allocation
     vmaCreateBuffer(ALLOCATOR, &bufferInfo, &vmaallocInfo, &VERTEX_BUFFER.BUFFER, &VERTEX_BUFFER.ALLOCATION, nullptr);
 
- //   _mainDeletionQueue.push_function([=]() {
- //
- //       vmaDestroyBuffer(ALLOCATOR, VERTEX_BUFFER.BUFFER, VERTEX_BUFFER.ALLOCATION);
- //       });
+    //   _mainDeletionQueue.push_function([=]() {
+    //
+    //       vmaDestroyBuffer(ALLOCATOR, VERTEX_BUFFER.BUFFER, VERTEX_BUFFER.ALLOCATION);
+    //       });
 
 
     void* data;

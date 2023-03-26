@@ -216,12 +216,72 @@ void Vulkan::initPipeline(string name,string sShaderVertex,string sShaderFragmen
 		cout << endl << "Pipeline layout creation failed";
 	}
 
+
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = 3;
-	vertexInputInfo.pVertexBindingDescriptions = MESH->getBindingDescription();
-	vertexInputInfo.vertexAttributeDescriptionCount = (MESH->getAttributeDescription().size());
-	vertexInputInfo.pVertexAttributeDescriptions = MESH->getAttributeDescription().data();
+
+
+	//------------------
+
+
+	struct VertexInputDescription
+	{
+
+		std::vector<VkVertexInputBindingDescription> BINDINGS;
+		std::vector<VkVertexInputAttributeDescription> ATTRIBUTES;
+		VkPipelineVertexInputStateCreateFlags flags;
+	}VID;
+
+	struct Vertex
+	{
+		glm::vec3 position;
+		glm::vec3 normal;
+		glm::vec3 color;
+
+		static VertexInputDescription getVertexDescription();
+	};
+
+	VertexInputDescription description;
+
+	//we will have just 1 vertex buffer binding, with a per-vertex rate
+	VkVertexInputBindingDescription mainBinding = {};
+	mainBinding.binding = 0;
+	mainBinding.stride = sizeof(Vertex);
+	mainBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+	description.BINDINGS.push_back(mainBinding);
+
+	//Position will be stored at Location 0
+	VkVertexInputAttributeDescription positionAttribute = {};
+	positionAttribute.binding = 0;
+	positionAttribute.location = 0;
+	positionAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+	positionAttribute.offset = offsetof(Vertex, position);
+
+	//Normal will be stored at Location 1
+	VkVertexInputAttributeDescription normalAttribute = {};
+	normalAttribute.binding = 0;
+	normalAttribute.location = 1;
+	normalAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+	normalAttribute.offset = offsetof(Vertex, normal);
+
+	//Color will be stored at Location 2
+	VkVertexInputAttributeDescription colorAttribute = {};
+	colorAttribute.binding = 0;
+	colorAttribute.location = 2;
+	colorAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+	colorAttribute.offset = offsetof(Vertex, color);
+
+	description.ATTRIBUTES.push_back(positionAttribute);
+	description.ATTRIBUTES.push_back(normalAttribute);
+	description.ATTRIBUTES.push_back(colorAttribute);
+
+	//------------
+
+	vertexInputInfo.vertexBindingDescriptionCount = description.BINDINGS.size();
+	vertexInputInfo.pVertexBindingDescriptions =  description.BINDINGS.data();
+	vertexInputInfo.vertexAttributeDescriptionCount = description.ATTRIBUTES.size();
+	vertexInputInfo.pVertexAttributeDescriptions = description.ATTRIBUTES.data();
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -325,6 +385,8 @@ void Vulkan::initPipeline(string name,string sShaderVertex,string sShaderFragmen
 	pipelineCreateInfo.subpass = 0;
 	pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 
+
+
 	//Create pipeline 1
 
 	VkPipeline PIPELINE_TEMP = VK_NULL_HANDLE;
@@ -343,7 +405,6 @@ void Vulkan::initPipeline(string name,string sShaderVertex,string sShaderFragmen
 
 bool Vulkan::initVulkan()
 {
-	cout << endl << "-------------------";
 
 	uint32_t deviceCount = 0;
 
@@ -717,13 +778,14 @@ bool Vulkan::initVulkan()
 		return result;
 	}
 
+
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = 3;
-	vertexInputInfo.pVertexBindingDescriptions = MESH->getBindingDescription();
-	vertexInputInfo.vertexAttributeDescriptionCount = (MESH->getAttributeDescription().size());
-	vertexInputInfo.pVertexAttributeDescriptions = MESH->getAttributeDescription().data();
-
+	vertexInputInfo.vertexBindingDescriptionCount = 0;
+	vertexInputInfo.pVertexBindingDescriptions =  nullptr;
+	vertexInputInfo.vertexAttributeDescriptionCount = 0;
+	vertexInputInfo.pVertexAttributeDescriptions =  nullptr;
+	
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -826,63 +888,6 @@ bool Vulkan::initVulkan()
 	pipelineCreateInfo.subpass = 0;
 	pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-	//Create pipeline 1
-
-	RESULT_VK = vkCreateGraphicsPipelines(LOGICAL_DEVICE_VK, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &GRAPHICS_PIPELINE_VK);
-	if (RESULT_VK != VK_SUCCESS) {
-		// Handle pipeline creation error
-		vkDestroyPipelineLayout(LOGICAL_DEVICE_VK, pipelineLayout, nullptr);
-		vkDestroyDescriptorSetLayout(LOGICAL_DEVICE_VK, descriptorSetLayout, nullptr);
-		vkDestroySwapchainKHR(LOGICAL_DEVICE_VK, SWAPCHAIN_VK, nullptr);
-		return RESULT_VK;
-	}
-
-
-	VERT_SHADER_MODULE = Shader::createShaderModule(LOGICAL_DEVICE_VK, Shader::readFile("shaders/vertex_shader3.spv"));
-	FRAG_SHADER_MODULE = Shader::createShaderModule(LOGICAL_DEVICE_VK, Shader::readFile("shaders/fs.spv"));
-
-	// Define shader stage create info structures
-	vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	vertShaderStageInfo.module = VERT_SHADER_MODULE;
-	vertShaderStageInfo.pName = "main";
-
-	fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	fragShaderStageInfo.module = FRAG_SHADER_MODULE;
-	fragShaderStageInfo.pName = "main";
-
-	// Create array of shader stage create info structures
-
-	VkPipelineShaderStageCreateInfo shaderStages2[] = { vertShaderStageInfo, fragShaderStageInfo };
-
-	pipelineCreateInfo = {};
-
-	pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	pipelineCreateInfo.stageCount = 2;
-	pipelineCreateInfo.pStages = shaderStages2;
-	pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
-	pipelineCreateInfo.pInputAssemblyState = &inputAssembly;
-	pipelineCreateInfo.pViewportState = &viewportState;
-	pipelineCreateInfo.pRasterizationState = &rasterizer;
-	pipelineCreateInfo.pMultisampleState = &multisampling;
-	pipelineCreateInfo.pDepthStencilState = &depthStencil;
-	pipelineCreateInfo.pColorBlendState = &colorBlending;
-	pipelineCreateInfo.layout = pipelineLayout;
-	pipelineCreateInfo.renderPass = RENDER_PASS_VK;
-	pipelineCreateInfo.subpass = 0;
-	pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
-
-	//Create pipeline 2
-
-	RESULT_VK = vkCreateGraphicsPipelines(LOGICAL_DEVICE_VK, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &GRAPHICS_PIPELINE_2_VK);
-	if (RESULT_VK != VK_SUCCESS) {
-		// Handle pipeline creation error
-		vkDestroyPipelineLayout(LOGICAL_DEVICE_VK, pipelineLayout, nullptr);
-		vkDestroyDescriptorSetLayout(LOGICAL_DEVICE_VK, descriptorSetLayout, nullptr);
-		vkDestroySwapchainKHR(LOGICAL_DEVICE_VK, SWAPCHAIN_VK, nullptr);
-		return RESULT_VK;
-	}
 
 	VkCommandPoolCreateInfo poolCreateInfo = {};
 	poolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;

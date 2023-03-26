@@ -22,6 +22,8 @@
 #include <string>
 #include <algorithm>
 
+
+
 using namespace std;
 
 class Mesh;
@@ -74,12 +76,10 @@ public:
 	void initPipeline(string name, string sShaderVertex, string sShaderFragment);
 	VkPipeline getPipeline(string name);
 	VkPipeline getCurrentPipeline();
-
 	VkPipeline switchPipeline();
 	void setCurrentGraphicsPipeline(VkPipeline pipeline);
 
 	Mesh* MESH = nullptr;
-
 
 private:
 
