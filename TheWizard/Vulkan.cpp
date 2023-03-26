@@ -40,9 +40,16 @@ Vulkan::Vulkan(LWindow &window)
 
 	initVulkan();
 }
+	
+VkPhysicalDevice Vulkan::getPhysicalDevice() const
+{
+	return PHYSICAL_DEVICE_VK;
+}
 
-
-
+VkCommandPool Vulkan::getCommandPool() const
+{
+	return COMMAND_POOL_VK;
+}
 
 void Vulkan::switchPipeline()
 {
@@ -506,9 +513,6 @@ bool Vulkan::initVulkan()
 		return result;
 	}
 
-	//asdf 
-
-
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	vertexInputInfo.vertexBindingDescriptionCount = 0; // Specify the number of vertex binding descriptions
@@ -581,7 +585,7 @@ bool Vulkan::initVulkan()
 	colorBlending.blendConstants[2] = 0.0f;
 	colorBlending.blendConstants[3] = 0.0f;
 
-	VERT_SHADER_MODULE = Shader::createShaderModule(LOGICAL_DEVICE_VK, Shader::readFile("shaders/colored_triangle_vertex.spv"));
+	VERT_SHADER_MODULE = Shader::createShaderModule(LOGICAL_DEVICE_VK, Shader::readFile("shaders/tri_mesh.spv"));
 	FRAG_SHADER_MODULE = Shader::createShaderModule(LOGICAL_DEVICE_VK, Shader::readFile("shaders/colored_triangle_frag.spv"));
 
 	// Define shader stage create info structures
@@ -617,7 +621,6 @@ bool Vulkan::initVulkan()
 	pipelineCreateInfo.renderPass = RENDER_PASS_VK;
 	pipelineCreateInfo.subpass = 0;
 	pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
-
 
 	//Create pipeline 1
 
@@ -765,3 +768,4 @@ bool Vulkan::initVulkan()
 	vmaCreateAllocator(&ALLOCATOR_INFO, &ALLOCATOR);
 
 }
+

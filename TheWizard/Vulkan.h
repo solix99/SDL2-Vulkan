@@ -1,5 +1,9 @@
 #pragma once
 
+#ifndef VULKAN_H
+#define VULKAN_H
+
+
 #include <iostream>
 #include <SDL_vulkan.h>
 #include <vulkan.h>
@@ -14,6 +18,8 @@
 #include <functional>
 #include <deque>
 #include <vk_mem_alloc.h>
+#include "Mesh.h"
+
 
 using namespace std;
 
@@ -35,13 +41,12 @@ struct DeletionQueue
 	}
 };
 
-class Mesh;
 
-static class Vulkan
+class Vulkan
 {
 public:
 	Vulkan(LWindow &window);
-
+	Vulkan();
 	bool cleanup();
 	bool initVulkan();
 	bool isDeviceSuitable(VkPhysicalDevice) const; 
@@ -60,11 +65,11 @@ public:
 	VkSemaphore getSemaphoreAvailable() const;
 	VkPresentInfoKHR *getPresentInfo() ;
 	VkFence *getFenceRenderingFinished();
-	
+	VkCommandPool getCommandPool() const;
+	VkPhysicalDevice getPhysicalDevice() const;
+
 	void switchPipeline();
 	void setCurrentGraphicsPipeline(VkPipeline pipeline);
-
-	
 
 
 private:
@@ -97,7 +102,7 @@ private:
 	uint32_t IMAGE_INDEX_VK = 0;
 	VkCommandBufferBeginInfo COMMAND_BUFFER_BEGIN_INFO_VK = {};
 	VkRenderPassBeginInfo RENDER_PASS_BEGIN_INFO_VK = {};
-	VkClearValue WINDOW_RENDER_COLOR_VK = { 1.0f, 1.0f, 1.0f, 1.0f };
+	VkClearValue WINDOW_RENDER_COLOR_VK = { 0.0f, 0.0f, 1.0f, 1.0f };
 	VkSubmitInfo SUBMIT_INFO_VK = {};
 	VkShaderModule VERT_SHADER_MODULE = VK_NULL_HANDLE;
 	VkShaderModule FRAG_SHADER_MODULE = VK_NULL_HANDLE;
@@ -109,3 +114,4 @@ private:
 
 };
 
+#endif

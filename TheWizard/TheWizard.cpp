@@ -38,6 +38,7 @@
 #include "Vulkan.h"
 #include "Vars.h"
 #include "vk_mem_alloc.h"
+#include "Mesh.h"
 
 WSADATA wData;
 #pragma comment(lib, "Ws2_32.lib")
@@ -187,7 +188,8 @@ SDL_Event e;
 LServer gServer;
 LWindow gWindow(DEFAULT_RESOLUTION_WIDTH, DEFAULT_RESOLUTION_HEIGHT);
 Vulkan VK(gWindow);
-
+//Mesh MESH(VK.getLogicalDevice(), VK.getPhysicalDevice(), VK.getCommandPool(), VK.getGraphicsQueue());
+Mesh MESH(&VK);
 LPawn CLIENT;
 LPawn Player[MAX_PLAYER_ENTITY];
 
@@ -299,7 +301,7 @@ struct engineParameters
 	}TEMP;
 	struct RENDERING
 	{
-
+		VkPipelineVertexInputStateCreateInfo VERTEX_INPUT_INFO = {};
 
 	}RND;
 
@@ -326,9 +328,19 @@ bool isDeviceSuitable(VkPhysicalDevice device);
 VkShaderModule createShaderModule(VkDevice device, const std::vector<char>& code);
 uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 void recordRenderCommands(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+void endSingleTimeCommands(VkCommandBuffer commandBuffer);
 
 void vkRender()
 {
+	VkDeviceSize offset = 0;
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
+
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertexInputInfo.vertexBindingDescriptionCount = 1;
+	vertexInputInfo.pVertexBindingDescriptions = MESH.getBindingDescription();
+	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(MESH.getAttributeDescription().size());
+	vertexInputInfo.pVertexAttributeDescriptions = MESH.getAttributeDescription().data();
+
 
 	vkAcquireNextImageKHR(VK.getLogicalDevice(), VK.getSwapchain(), UINT64_MAX, VK.getSemaphoreAvailable(), VK_NULL_HANDLE, VK.getImageIndex());
 
@@ -344,10 +356,12 @@ void vkRender()
 
 	vkCmdBindPipeline(VK.getCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, VK.getGraphicsPipeline());
 	
+	vkCmdBindVertexBuffers(VK.getCommandBuffer(), 0, 1, MESH.getVertexBuffer(), &offset);
 
-	vkCmdDraw(VK.getCommandBuffer(), 3, 1, 0, 0);
+	cout << endl << MESH.getVerticesSize();
 
-	 
+	// Issue draw commands
+	vkCmdDraw(VK.getCommandBuffer(),MESH.getVerticesSize(), 1, 0, 0);
 
 	vkQueuePresentKHR(VK.getGraphicsQueue(), VK.getPresentInfo());
 
@@ -386,6 +400,21 @@ VkShaderModule createShaderModule(VkDevice device, const std::vector<char>& code
 	}
 
 	return shaderModule;
+}
+
+void endSingleTimeCommands(VkCommandBuffer commandBuffer)
+{
+	vkEndCommandBuffer(commandBuffer);
+
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+
+	vkQueueSubmit(VK.getGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(VK.getGraphicsQueue());
+
+	vkFreeCommandBuffers(VK.getLogicalDevice(), VK.getCommandPool(), 1, &commandBuffer);
 }
 
 VkMemoryPropertyFlags getRequiredMemoryFlags(VkBufferUsageFlags usageFlags) 
