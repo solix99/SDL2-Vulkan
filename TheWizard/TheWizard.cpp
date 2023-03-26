@@ -1116,7 +1116,7 @@ bool init()
 		}
 	}
 
-	//VK.initPipeline("PIPE1","shaders/colored_triangle_vertex.spv","shaders/colored_triangle_frag.spv");
+	VK.initPipeline("PIPE1","shaders/colored_triangle_vertex.spv","shaders/colored_triangle_frag.spv");
 	VK.initPipeline("PIPE2", "shaders/tri_mesh.spv", "shaders/colored_triangle_frag.spv");
 
 	return success;
