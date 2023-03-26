@@ -39,6 +39,14 @@ Vulkan::Vulkan(LWindow &window)
 	}
 
 	initVulkan();
+
+	MESH = new Mesh(this);
+
+}
+
+Vulkan::~Vulkan()
+{
+	delete MESH;
 }
 	
 VkPhysicalDevice Vulkan::getPhysicalDevice() const
@@ -137,9 +145,16 @@ bool Vulkan::isDeviceSuitable(VkPhysicalDevice device) const
 	return deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.geometryShader;
 }
 
+VkInstance Vulkan::getInstance() const
+{
+	return INSTANCE_VK;
+}
+
+
 bool Vulkan::initVulkan()
 {
 
+	cout << endl << "-------------------";
 
 	uint32_t deviceCount = 0;
 
@@ -212,7 +227,7 @@ bool Vulkan::initVulkan()
 
 	vkGetPhysicalDeviceProperties(PHYSICAL_DEVICE_VK, &DEVICE_PROPERTIES_VK);
 	vkGetPhysicalDeviceFeatures(PHYSICAL_DEVICE_VK, &DEVICE_FEATURES_VK);
-
+	
 
 	//create a logical device using parameters : deviceFeatures,PHYSICAL_DEVICE_VK
 
@@ -448,7 +463,7 @@ bool Vulkan::initVulkan()
 		cout << "RENDER PASS FAILED";
 		return result;
 	}
-	cout << endl << swapchainImageCount;
+	//cout << endl << swapchainImageCount;
 	SWAPCHAIN_FRAMEBUFFER_VK.assign(swapchainImageCount, VK_NULL_HANDLE);
 
 	for (uint32_t i = 0; i < swapchainImageCount; i++)
@@ -515,10 +530,10 @@ bool Vulkan::initVulkan()
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = 0; // Specify the number of vertex binding descriptions
-	vertexInputInfo.pVertexBindingDescriptions = nullptr; // Pointer to an array of vertex binding descriptions
-	vertexInputInfo.vertexAttributeDescriptionCount = 0; // Specify the number of vertex attribute descriptions
-	vertexInputInfo.pVertexAttributeDescriptions = nullptr; // Pointer to an array of vertex attribute descriptions 
+	vertexInputInfo.vertexBindingDescriptionCount = 3;
+	vertexInputInfo.pVertexBindingDescriptions = MESH->getBindingDescription();
+	vertexInputInfo.vertexAttributeDescriptionCount = (MESH->getAttributeDescription().size());
+	vertexInputInfo.pVertexAttributeDescriptions = MESH->getAttributeDescription().data();
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;

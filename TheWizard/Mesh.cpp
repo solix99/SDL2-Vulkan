@@ -2,15 +2,47 @@
 
 
 
-Mesh::Mesh(VkDevice logical_device, VkPhysicalDevice physical_device, VkCommandPool cmdPool, VkQueue queue)
-{
-
-}
-
 Mesh::Mesh(Vulkan* vulkan)
 {
     VK = vulkan;
-    createVertexBuffer();
+
+    ALLOCATOR_INFO.physicalDevice = VK->getPhysicalDevice();
+    ALLOCATOR_INFO.device = VK->getLogicalDevice();
+    ALLOCATOR_INFO.instance = VK->getInstance();
+    vmaCreateAllocator(&ALLOCATOR_INFO, &ALLOCATOR);
+
+    loadMesh();
+
+    //we will have just 1 vertex buffer binding, with a per-vertex rate
+    bindingDescription.binding = 0;
+    bindingDescription.stride = sizeof(Vertex);
+    bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+    //Position will be stored at Location 0
+    VkVertexInputAttributeDescription positionAttribute = {};
+    positionAttribute.binding = 0;
+    positionAttribute.location = 0;
+    positionAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+    positionAttribute.offset = offsetof(Vertex, position);
+
+    //Normal will be stored at Location 1
+    VkVertexInputAttributeDescription normalAttribute = {};
+    normalAttribute.binding = 0;
+    normalAttribute.location = 1;
+    normalAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+    normalAttribute.offset = offsetof(Vertex, normal);
+
+    //Color will be stored at Location 2
+    VkVertexInputAttributeDescription colorAttribute = {};
+    colorAttribute.binding = 0;
+    colorAttribute.location = 2;
+    colorAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+    colorAttribute.offset = offsetof(Vertex, color);
+
+    attributeDescriptions[0] = positionAttribute;
+    attributeDescriptions[1] = normalAttribute;
+    attributeDescriptions[2] = colorAttribute;
+
 }
 
 VkCommandBuffer Mesh::beginSingleTimeCommands()
@@ -49,48 +81,6 @@ void Mesh::endSingleTimeCommands(VkCommandBuffer commandBuffer)
 }
 
 
-struct Mesh::Vertex 
-{
-    glm::vec3 position;
-    glm::vec3 normal;
-    glm::vec2 color;
-
-    static VkVertexInputBindingDescription* getBindingDescription()
-    {
-        static VkVertexInputBindingDescription bindingDescription = {};
-        bindingDescription.binding = 0;
-        bindingDescription.stride = sizeof(Vertex);
-        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-        return &bindingDescription;
-    }
-
-     static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions()
-     {
-        std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions = {};
-
-        attributeDescriptions[0].binding = 0;
-        attributeDescriptions[0].location = 0;
-        attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attributeDescriptions[0].offset = offsetof(Vertex, position);
-
-
-        attributeDescriptions[1].binding = 0;
-        attributeDescriptions[1].location = 1;
-        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attributeDescriptions[1].offset = offsetof(Vertex, normal);
-
-
-        attributeDescriptions[2].binding = 0;
-        attributeDescriptions[2].location = 2;
-        attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-        attributeDescriptions[2].offset = offsetof(Vertex, color);
-
-        return attributeDescriptions;
-    }
-};
-/**/
-
 uint32_t Mesh::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
     VkPhysicalDeviceMemoryProperties memProperties;
     vkGetPhysicalDeviceMemoryProperties(VK->getPhysicalDevice(), &memProperties);
@@ -104,47 +94,12 @@ uint32_t Mesh::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags propert
     throw std::runtime_error("failed to find suitable memory type!");
 }
 
-void Mesh::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
-{
-    VkBufferCreateInfo bufferInfo = {};
-    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferInfo.size = size;
-    bufferInfo.usage = usage;
-    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    if (vkCreateBuffer(VK->getLogicalDevice(), &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create buffer!");
-    }
-
-    VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(VK->getLogicalDevice(), buffer, &memRequirements);
-
-    VkMemoryAllocateInfo allocInfo = {};
-    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocInfo.allocationSize = memRequirements.size;
-    allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
-
-    if (vkAllocateMemory(VK->getLogicalDevice(), &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
-    {
-        throw std::runtime_error("failed to allocate buffer memory!");
-    }
-
-    vkBindBufferMemory(VK->getLogicalDevice(), buffer, bufferMemory, 0);
-}
-
-vector<Mesh::Vertex> vertices =
-{
-    { { -0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f } },
-    { { 0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 1.0f, 0.0f } },
-    { { 0.5f, 0.5f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 1.0f, 1.0f } },
-    { { -0.5f, 0.5f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 1.0f } }
-};
 
 uint32_t Mesh::getVerticesSize()
 {
+    //cout << endl << vertices.size() << "v SIZE";
     return vertices.size();
 }
-
 
 void Mesh::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
     VkCommandBuffer commandBuffer = beginSingleTimeCommands();
@@ -158,37 +113,19 @@ void Mesh::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
     endSingleTimeCommands(commandBuffer);
 }
 
-void Mesh::createVertexBuffer()
-{
-
-    VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-    void* data;
-    vkMapMemory(VK->getLogicalDevice(), stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
-    vkUnmapMemory(VK->getLogicalDevice(), stagingBufferMemory);
-
-    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
-
-    copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
-
-    vkDestroyBuffer(VK->getLogicalDevice(), stagingBuffer, nullptr);
-    vkFreeMemory(VK->getLogicalDevice(), stagingBufferMemory, nullptr);
-}
 
 VkBuffer *Mesh::getVertexBuffer()
 {
-    return &vertexBuffer;
+   // cout << endl << VERTEX_BUFFER.BUFFER;
+    return &VERTEX_BUFFER.BUFFER;
+
 }
 
 VkVertexInputBindingDescription* Mesh::getBindingDescription()
 {
     return Mesh::Vertex::getBindingDescription();
 }
+
 
 array<VkVertexInputAttributeDescription, 3> Mesh::getAttributeDescription()
 {
@@ -210,6 +147,8 @@ void Mesh::loadMesh()
     vertices[0].color = { 0.f, 1.f, 0.0f }; //pure green
     vertices[1].color = { 0.f, 1.f, 0.0f }; //pure green
     vertices[2].color = { 0.f, 1.f, 0.0f }; //pure green
+
+    uploadMesh();
 }
 
 
@@ -219,7 +158,7 @@ void Mesh::uploadMesh()
     VkBufferCreateInfo bufferInfo = {};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     //this is the total size, in bytes, of the buffer we are allocating
-    bufferInfo.size = mesh._vertices.size() * sizeof(Vertex);
+    bufferInfo.size = vertices.size() * sizeof(Vertex);
     //this buffer is going to be used as a Vertex Buffer
     bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
@@ -227,24 +166,23 @@ void Mesh::uploadMesh()
     VmaAllocationCreateInfo vmaallocInfo = {};
     vmaallocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
-    //allocate the buffer
-    VK_CHECK(vmaCreateBuffer(_allocator, &bufferInfo, &vmaallocInfo,
-        &mesh._vertexBuffer._buffer,
-        &mesh._vertexBuffer._allocation,
-        nullptr));
+    //allocate the buffer  &mesh._vertexBuffer._allocation
+    vmaCreateBuffer(ALLOCATOR, &bufferInfo, &vmaallocInfo, &VERTEX_BUFFER.BUFFER, &VERTEX_BUFFER.ALLOCATION, nullptr);
 
-    //add the destruction of triangle mesh buffer to the deletion queue
-    _mainDeletionQueue.push_function([=]() {
-
-        vmaDestroyBuffer(_allocator, mesh._vertexBuffer._buffer, mesh._vertexBuffer._allocation);
-        });
+ //   _mainDeletionQueue.push_function([=]() {
+ //
+ //       vmaDestroyBuffer(ALLOCATOR, VERTEX_BUFFER.BUFFER, VERTEX_BUFFER.ALLOCATION);
+ //       });
 
 
     void* data;
 
-    vmaMapMemory(_allocator, mesh._vertexBuffer._allocation, &data);
+    //cout << endl << vertices.data() << " " << vertices.size();
 
-    memcpy(data, mesh._vertices.data(), mesh._vertices.size() * sizeof(Vertex));
+    vmaMapMemory(ALLOCATOR, VERTEX_BUFFER.ALLOCATION, &data);
 
-    vmaUnmapMemory(_allocator, mesh._vertexBuffer._allocation);
+    memcpy(data, vertices.data(), vertices.size() * sizeof(Vertex));
+
+    vmaUnmapMemory(ALLOCATOR, VERTEX_BUFFER.ALLOCATION);
+
 }

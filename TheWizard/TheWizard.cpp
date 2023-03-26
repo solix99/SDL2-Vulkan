@@ -187,9 +187,10 @@ SDL_Event e;
 
 LServer gServer;
 LWindow gWindow(DEFAULT_RESOLUTION_WIDTH, DEFAULT_RESOLUTION_HEIGHT);
+
 Vulkan VK(gWindow);
-//Mesh MESH(VK.getLogicalDevice(), VK.getPhysicalDevice(), VK.getCommandPool(), VK.getGraphicsQueue());
-Mesh MESH(&VK);
+
+
 LPawn CLIENT;
 LPawn Player[MAX_PLAYER_ENTITY];
 
@@ -333,14 +334,8 @@ void endSingleTimeCommands(VkCommandBuffer commandBuffer);
 void vkRender()
 {
 	VkDeviceSize offset = 0;
-	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 
-	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = 1;
-	vertexInputInfo.pVertexBindingDescriptions = MESH.getBindingDescription();
-	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(MESH.getAttributeDescription().size());
-	vertexInputInfo.pVertexAttributeDescriptions = MESH.getAttributeDescription().data();
-
+	cout << VK.MESH->getBindingDescription()  << " " << VK.MESH->getAttributeDescription().size() << " " << VK.MESH->getAttributeDescription().data() << endl;
 
 	vkAcquireNextImageKHR(VK.getLogicalDevice(), VK.getSwapchain(), UINT64_MAX, VK.getSemaphoreAvailable(), VK_NULL_HANDLE, VK.getImageIndex());
 
@@ -356,12 +351,13 @@ void vkRender()
 
 	vkCmdBindPipeline(VK.getCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, VK.getGraphicsPipeline());
 	
-	vkCmdBindVertexBuffers(VK.getCommandBuffer(), 0, 1, MESH.getVertexBuffer(), &offset);
+	vkCmdBindVertexBuffers(VK.getCommandBuffer(), 0, 1, VK.MESH->getVertexBuffer(), &offset);
 
-	cout << endl << MESH.getVerticesSize();
+	//cout << endl << VK.MESH->getVertexBuffer() << " " << VK.MESH->getVerticesSize();
 
 	// Issue draw commands
-	vkCmdDraw(VK.getCommandBuffer(),MESH.getVerticesSize(), 1, 0, 0);
+
+	vkCmdDraw(VK.getCommandBuffer(), VK.MESH->getVerticesSize(), 1, 0, 0);
 
 	vkQueuePresentKHR(VK.getGraphicsQueue(), VK.getPresentInfo());
 
@@ -386,7 +382,6 @@ bool isDeviceSuitable(VkPhysicalDevice device)
 
 VkShaderModule createShaderModule(VkDevice device, const std::vector<char>& code) 
 {
-	
 	VkShaderModuleCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	createInfo.codeSize = code.size();

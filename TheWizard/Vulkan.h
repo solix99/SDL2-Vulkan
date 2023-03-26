@@ -20,8 +20,9 @@
 #include <vk_mem_alloc.h>
 #include "Mesh.h"
 
-
 using namespace std;
+
+class Mesh;
 
 struct DeletionQueue
 {
@@ -41,12 +42,12 @@ struct DeletionQueue
 	}
 };
 
-
 class Vulkan
 {
 public:
 	Vulkan(LWindow &window);
 	Vulkan();
+	~Vulkan();
 	bool cleanup();
 	bool initVulkan();
 	bool isDeviceSuitable(VkPhysicalDevice) const; 
@@ -67,9 +68,12 @@ public:
 	VkFence *getFenceRenderingFinished();
 	VkCommandPool getCommandPool() const;
 	VkPhysicalDevice getPhysicalDevice() const;
+    VkInstance getInstance() const;
 
 	void switchPipeline();
 	void setCurrentGraphicsPipeline(VkPipeline pipeline);
+
+	Mesh* MESH = nullptr;
 
 
 private:
