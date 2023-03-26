@@ -46,7 +46,13 @@ Vulkan::Vulkan(LWindow &window)
 
 Vulkan::~Vulkan()
 {
+	_mainDeletionQueue.push_function([=]() {
+		//other deletions
 
+		vkDestroyPipelineLayout(LOGICAL_DEVICE_VK, meshPipelineLayout, nullptr);
+		vkDestroyPipeline(LOGICAL_DEVICE_VK, PIPE.GRAPHICS_PIPELINES_VK[0], nullptr);
+
+		});
 }
 	
 VkPhysicalDevice Vulkan::getPhysicalDevice() const
@@ -73,10 +79,6 @@ VkPipeline Vulkan::getCurrentPipeline()
 	return PIPE.GRAPHICS_PIPELINES_VK[PIPE.CURRENT];
 }
 
-void Vulkan::setCurrentGraphicsPipeline(VkPipeline pipeline)
-{
-	GRAPHICS_PIPELINE_VK = pipeline;
-}
 
 VkSubmitInfo *Vulkan::getSubmitInfo(){
 	return &SUBMIT_INFO_VK;
@@ -84,10 +86,6 @@ VkSubmitInfo *Vulkan::getSubmitInfo(){
 
 VkCommandBuffer Vulkan::getCommandBuffer() const {
 	return COMMAND_BUFFER_VK;
-}
-
-VkPipeline Vulkan::getGraphicsPipeline() const {
-	return GRAPHICS_PIPELINE_CURRENT_VK;
 }
 
 VkQueue Vulkan::getGraphicsQueue() const {
@@ -138,8 +136,6 @@ VkFence *Vulkan::getFenceRenderingFinished()
 
 bool Vulkan::cleanup()
 {
-
-	//to do
 	return true;
 }
 
@@ -173,12 +169,9 @@ VkPipeline Vulkan::getPipeline(string name)
 	return VK_NULL_HANDLE;
 }
 
-void Vulkan::initPipeline(string name,string sShaderVertex,string sShaderFragment)
+
+VkPipelineLayout Vulkan::getPipelineLayout()
 {
-	PIPE.NAME.push_back(name);
-
-	VkResult result = VK_SUCCESS;
-
 	// Create a descriptor set layout for the uniform values
 	VkDescriptorSetLayoutBinding layoutBinding = {};
 	layoutBinding.binding = 1;
@@ -194,89 +187,47 @@ void Vulkan::initPipeline(string name,string sShaderVertex,string sShaderFragmen
 
 	VkDescriptorSetLayout descriptorSetLayout;
 	result = vkCreateDescriptorSetLayout(LOGICAL_DEVICE_VK, &layoutCreateInfo, nullptr, &descriptorSetLayout);
-	if (result != VK_SUCCESS) 
+	if (result != VK_SUCCESS)
 	{
 		// Handle descriptor set layout creation error
 		vkDestroySwapchainKHR(LOGICAL_DEVICE_VK, SWAPCHAIN_VK, nullptr);
 		cout << endl << "Descriptor set layout creation failed";
 	}
 
-	// Create the pipeline layout using the descriptor set layout
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {};
 	pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipelineLayoutCreateInfo.setLayoutCount = 1;
 	pipelineLayoutCreateInfo.pSetLayouts = &descriptorSetLayout;
+	VkPushConstantRange pushConstant = {};
+	int pushConstantOffset = 0;
+	pushConstant.size = sizeof(MESH.pushConstants);
+	pushConstant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstant;
+	pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
 
 	VkPipelineLayout pipelineLayout;
+
 	result = vkCreatePipelineLayout(LOGICAL_DEVICE_VK, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout);
-	if (result != VK_SUCCESS) {
+	if (result != VK_SUCCESS)
+	{
 		// Handle pipeline layout creation error
 		vkDestroyDescriptorSetLayout(LOGICAL_DEVICE_VK, descriptorSetLayout, nullptr);
 		vkDestroySwapchainKHR(LOGICAL_DEVICE_VK, SWAPCHAIN_VK, nullptr);
 		cout << endl << "Pipeline layout creation failed";
 	}
 
+	return pipelineLayout;
+}
+
+
+void Vulkan::initPipeline(string name,string sShaderVertex,string sShaderFragment)
+{
+	PIPE.NAME.push_back(name);
+
+	VkPipelineLayout pipelineLayout = getPipelineLayout();
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-
-
-	//------------------
-
-	//struct VertexInputDescription
-	//{
-	//
-	//	std::vector<VkVertexInputBindingDescription> BINDINGS;
-	//	std::vector<VkVertexInputAttributeDescription> ATTRIBUTES;
-	//	VkPipelineVertexInputStateCreateFlags flags;
-	//}VID;
-	//
-	//struct Vertex
-	//{
-	//	glm::vec3 position;
-	//	glm::vec3 normal;
-	//	glm::vec3 color;
-	//
-	//	static VertexInputDescription getVertexDescription();
-	//};
-	//
-	//VertexInputDescription description;
-	//
-	////we will have just 1 vertex buffer binding, with a per-vertex rate
-	//VkVertexInputBindingDescription mainBinding = {};
-	//mainBinding.binding = 0;
-	//mainBinding.stride = sizeof(Vertex);
-	//mainBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-	//
-	//description.BINDINGS.push_back(mainBinding);
-	//
-	////Position will be stored at Location 0
-	//VkVertexInputAttributeDescription positionAttribute = {};
-	//positionAttribute.binding = 0;
-	//positionAttribute.location = 0;
-	//positionAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-	//positionAttribute.offset = offsetof(Vertex, position);
-	//
-	////Normal will be stored at Location 1
-	//VkVertexInputAttributeDescription normalAttribute = {};
-	//normalAttribute.binding = 0;
-	//normalAttribute.location = 1;
-	//normalAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-	//normalAttribute.offset = offsetof(Vertex, normal);
-	//
-	////Color will be stored at Location 2
-	//VkVertexInputAttributeDescription colorAttribute = {};
-	//colorAttribute.binding = 0;
-	//colorAttribute.location = 2;
-	//colorAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-	//colorAttribute.offset = offsetof(Vertex, color);
-	//
-	//description.ATTRIBUTES.push_back(positionAttribute);
-	//description.ATTRIBUTES.push_back(normalAttribute);
-	//description.ATTRIBUTES.push_back(colorAttribute);
-
-	//------------
-
 	vertexInputInfo.vertexBindingDescriptionCount = MESH.description.BINDINGS.size();
 	vertexInputInfo.pVertexBindingDescriptions = MESH.description.BINDINGS.data();
 	vertexInputInfo.vertexAttributeDescriptionCount = MESH.description.ATTRIBUTES.size();
@@ -384,27 +335,18 @@ void Vulkan::initPipeline(string name,string sShaderVertex,string sShaderFragmen
 	pipelineCreateInfo.subpass = 0;
 	pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-
-
-	//Create pipeline 1
+	//Create pipeline
 
 	VkPipeline PIPELINE_TEMP = VK_NULL_HANDLE;
 
 	RESULT_VK = vkCreateGraphicsPipelines(LOGICAL_DEVICE_VK, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &PIPELINE_TEMP);
-	if (RESULT_VK != VK_SUCCESS) {
-		// Handle pipeline creation error
-		vkDestroyPipelineLayout(LOGICAL_DEVICE_VK, pipelineLayout, nullptr);
-		vkDestroyDescriptorSetLayout(LOGICAL_DEVICE_VK, descriptorSetLayout, nullptr);
-		vkDestroySwapchainKHR(LOGICAL_DEVICE_VK, SWAPCHAIN_VK, nullptr);
-        cout << endl << "Failed to create graphics pipeline";
-	}
+	if (RESULT_VK != VK_SUCCESS) { cout << endl << "Failed to create graphics pipeline";}
 
 	PIPE.GRAPHICS_PIPELINES_VK.push_back(PIPELINE_TEMP);
 }
 
 bool Vulkan::initVulkan()
 {
-
 	uint32_t deviceCount = 0;
 
 	vkEnumeratePhysicalDevices(INSTANCE_VK, &deviceCount, nullptr);
@@ -887,7 +829,6 @@ bool Vulkan::initVulkan()
 	pipelineCreateInfo.subpass = 0;
 	pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-
 	VkCommandPoolCreateInfo poolCreateInfo = {};
 	poolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	poolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
@@ -934,7 +875,6 @@ bool Vulkan::initVulkan()
 		cout << "Failed to create fence for rendering" << endl;
 	}
 
-
 	PRESENT_INFO_VK.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	PRESENT_INFO_VK.waitSemaphoreCount = 1;
 	PRESENT_INFO_VK.pWaitSemaphores = &SEMAPHORE_IMAGE_AVAILABLE_VK;
@@ -965,8 +905,6 @@ bool Vulkan::initVulkan()
 	SUBMIT_INFO_VK.pCommandBuffers = &COMMAND_BUFFER_VK;
 	SUBMIT_INFO_VK.signalSemaphoreCount = 1;
 	SUBMIT_INFO_VK.pSignalSemaphores = &SEMAPHORE_IMAGE_AVAILABLE_VK;
-
-	GRAPHICS_PIPELINE_CURRENT_VK = GRAPHICS_PIPELINE_VK;
 
 	//VMA
 

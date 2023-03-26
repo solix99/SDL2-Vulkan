@@ -26,6 +26,11 @@ public:
 		glm::vec3 color;
 	};
 
+	struct MeshPushConstants {
+		glm::vec4 data;
+		glm::mat4 render_matrix;
+	}MPC;
+
 	struct VertexInputDescription
 	{
 		std::vector<VkVertexInputBindingDescription> BINDINGS;
@@ -34,6 +39,7 @@ public:
 	}VID;
 
 	VertexInputDescription description;
+	MeshPushConstants pushConstants;
 
 	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);

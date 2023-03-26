@@ -39,6 +39,9 @@
 #include "Vars.h"
 #include "vk_mem_alloc.h"
 #include "Mesh.h"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
 
 WSADATA wData;
 #pragma comment(lib, "Ws2_32.lib")
@@ -330,6 +333,15 @@ uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 void recordRenderCommands(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 void endSingleTimeCommands(VkCommandBuffer commandBuffer);
 
+
+
+
+int _frameNumber{ 1 };
+glm::vec3 camPos{0.f, 0.f, -2.f};
+
+
+
+
 void vkRender()
 {
 	VkDeviceSize offset = 0;
@@ -355,6 +367,25 @@ void vkRender()
 	//cout << endl << VK.MESH.getVertexBuffer() << " " << VK.MESH.getVerticesSize();
 
 	// Issue draw commands
+	
+	_frameNumber++;
+
+	//camera position
+
+	glm::mat4 view = glm::translate(glm::mat4(1.f), camPos);
+	//camera projection
+	glm::mat4 projection = glm::perspective(glm::radians(70.f), 16.f / 9.f, 0.1f, 200.0f);
+	projection[1][1] *= -1;
+	//model rotation
+	glm::mat4 model = glm::rotate(glm::mat4{ 1.f}, glm::radians(_frameNumber * 0.4f), glm::vec3(0, 1, 0));
+
+	//calculate final mesh matrix
+	glm::mat4 mesh_matrix = projection * view * model;
+
+	VK.MESH.pushConstants.render_matrix = mesh_matrix;
+
+	//upload the matrix to the GPU via push constants
+	vkCmdPushConstants(VK.getCommandBuffer(), VK.getPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(VK.MESH.pushConstants), &VK.MESH.pushConstants);
 
 	vkCmdDraw(VK.getCommandBuffer(), VK.MESH.getVerticesSize(), 1, 0, 0);
 
@@ -1115,7 +1146,7 @@ bool init()
 		}
 	}
 
-	VK.initPipeline("PIPE1","shaders/colored_triangle_vertex.spv","shaders/colored_triangle_frag.spv");
+	//VK.initPipeline("PIPE1","shaders/colored_triangle_vertex.spv","shaders/colored_triangle_frag.spv");
 	VK.initPipeline("PIPE2", "shaders/tri_mesh.spv", "shaders/colored_triangle_frag.spv");
 
 	return success;
@@ -1447,8 +1478,32 @@ void testEnviroment()
 			{
 				if (e.key.keysym.sym == SDLK_SPACE)
 				{
-					VK.switchPipeline();
+					
 				}	
+				else if (e.key.keysym.sym == SDLK_LCTRL)
+				{
+					camPos.y += 0.1f;
+				}
+				else if (e.key.keysym.sym == SDLK_KP_SPACE)
+				{
+					camPos.y -= 0.1f;
+				}
+				else if (e.key.keysym.sym == SDLK_a)
+				{
+					camPos.x += 0.1f;
+				}
+				else if (e.key.keysym.sym == SDLK_d)
+				{
+					camPos.x -= 0.1f;
+				}
+				else if (e.key.keysym.sym == SDLK_w)
+				{
+					camPos.z += 0.1f;
+				}
+				else if (e.key.keysym.sym == SDLK_s)
+				{
+					camPos.z -= 0.1f;
+				}
 			}
 		}
 		gWindow.handleEvent(e);

@@ -75,6 +75,7 @@ public:
 	VkPipeline getCurrentPipeline();
 	VkPipeline switchPipeline();
 	void setCurrentGraphicsPipeline(VkPipeline pipeline);
+	VkPipelineLayout getPipelineLayout();
 
 	Mesh MESH;
 
@@ -116,11 +117,11 @@ private:
 	VkSurfaceCapabilitiesKHR surfaceCapabilities;
 	VmaAllocatorCreateInfo ALLOCATOR_INFO = {};
 
-	VkPipeline GRAPHICS_PIPELINE_VK = VK_NULL_HANDLE;
-	VkPipeline GRAPHICS_PIPELINE_2_VK = VK_NULL_HANDLE;
-	VkPipeline GRAPHICS_PIPELINE_CURRENT_VK = VK_NULL_HANDLE;
-	VkPipeline GRAPHICS_MESH_PIPELINE_VK = VK_NULL_HANDLE;
+	VkPipelineLayout meshPipelineLayout = VK_NULL_HANDLE;
+
 	
+	VkResult result = VK_SUCCESS;
+
 	struct PIPELINES
 	{
 		size_t CURRENT = 0;
