@@ -190,7 +190,6 @@ LWindow gWindow(DEFAULT_RESOLUTION_WIDTH, DEFAULT_RESOLUTION_HEIGHT);
 
 Vulkan VK(gWindow);
 
-
 LPawn CLIENT;
 LPawn Player[MAX_PLAYER_ENTITY];
 
@@ -351,13 +350,13 @@ void vkRender()
 
 	vkCmdBindPipeline(VK.getCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, VK.getCurrentPipeline());
 	
-	vkCmdBindVertexBuffers(VK.getCommandBuffer(), 0, 1, VK.MESH->getVertexBuffer(), &offset);
-
-	//cout << endl << VK.MESH->getVertexBuffer() << " " << VK.MESH->getVerticesSize();
+	vkCmdBindVertexBuffers(VK.getCommandBuffer(), 0, 1, VK.MESH.getVertexBuffer(), &offset);
+	
+	//cout << endl << VK.MESH.getVertexBuffer() << " " << VK.MESH.getVerticesSize();
 
 	// Issue draw commands
 
-	vkCmdDraw(VK.getCommandBuffer(), VK.MESH->getVerticesSize(), 1, 0, 0);
+	vkCmdDraw(VK.getCommandBuffer(), VK.MESH.getVerticesSize(), 1, 0, 0);
 
 	vkQueuePresentKHR(VK.getGraphicsQueue(), VK.getPresentInfo());
 

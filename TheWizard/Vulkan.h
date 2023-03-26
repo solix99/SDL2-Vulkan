@@ -22,11 +22,8 @@
 #include <string>
 #include <algorithm>
 
-
-
 using namespace std;
 
-class Mesh;
 
 struct DeletionQueue
 {
@@ -79,7 +76,7 @@ public:
 	VkPipeline switchPipeline();
 	void setCurrentGraphicsPipeline(VkPipeline pipeline);
 
-	Mesh* MESH = nullptr;
+	Mesh MESH;
 
 private:
 

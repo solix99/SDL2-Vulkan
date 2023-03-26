@@ -40,13 +40,13 @@ Vulkan::Vulkan(LWindow &window)
 
 	initVulkan();
 
-	MESH = new Mesh(this);
+	MESH.meshInit(PHYSICAL_DEVICE_VK,LOGICAL_DEVICE_VK,INSTANCE_VK,COMMAND_POOL_VK,COMMAND_BUFFER_VK,GRAPHICS_QUEUE_VK);
 
 }
 
 Vulkan::~Vulkan()
 {
-	delete MESH;
+
 }
 	
 VkPhysicalDevice Vulkan::getPhysicalDevice() const
@@ -222,6 +222,7 @@ void Vulkan::initPipeline(string name,string sShaderVertex,string sShaderFragmen
 
 
 	//------------------
+
 
 
 	struct VertexInputDescription
