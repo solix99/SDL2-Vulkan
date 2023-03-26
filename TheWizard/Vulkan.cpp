@@ -223,66 +223,64 @@ void Vulkan::initPipeline(string name,string sShaderVertex,string sShaderFragmen
 
 	//------------------
 
-
-
-	struct VertexInputDescription
-	{
-
-		std::vector<VkVertexInputBindingDescription> BINDINGS;
-		std::vector<VkVertexInputAttributeDescription> ATTRIBUTES;
-		VkPipelineVertexInputStateCreateFlags flags;
-	}VID;
-
-	struct Vertex
-	{
-		glm::vec3 position;
-		glm::vec3 normal;
-		glm::vec3 color;
-
-		static VertexInputDescription getVertexDescription();
-	};
-
-	VertexInputDescription description;
-
-	//we will have just 1 vertex buffer binding, with a per-vertex rate
-	VkVertexInputBindingDescription mainBinding = {};
-	mainBinding.binding = 0;
-	mainBinding.stride = sizeof(Vertex);
-	mainBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-	description.BINDINGS.push_back(mainBinding);
-
-	//Position will be stored at Location 0
-	VkVertexInputAttributeDescription positionAttribute = {};
-	positionAttribute.binding = 0;
-	positionAttribute.location = 0;
-	positionAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-	positionAttribute.offset = offsetof(Vertex, position);
-
-	//Normal will be stored at Location 1
-	VkVertexInputAttributeDescription normalAttribute = {};
-	normalAttribute.binding = 0;
-	normalAttribute.location = 1;
-	normalAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-	normalAttribute.offset = offsetof(Vertex, normal);
-
-	//Color will be stored at Location 2
-	VkVertexInputAttributeDescription colorAttribute = {};
-	colorAttribute.binding = 0;
-	colorAttribute.location = 2;
-	colorAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-	colorAttribute.offset = offsetof(Vertex, color);
-
-	description.ATTRIBUTES.push_back(positionAttribute);
-	description.ATTRIBUTES.push_back(normalAttribute);
-	description.ATTRIBUTES.push_back(colorAttribute);
+	//struct VertexInputDescription
+	//{
+	//
+	//	std::vector<VkVertexInputBindingDescription> BINDINGS;
+	//	std::vector<VkVertexInputAttributeDescription> ATTRIBUTES;
+	//	VkPipelineVertexInputStateCreateFlags flags;
+	//}VID;
+	//
+	//struct Vertex
+	//{
+	//	glm::vec3 position;
+	//	glm::vec3 normal;
+	//	glm::vec3 color;
+	//
+	//	static VertexInputDescription getVertexDescription();
+	//};
+	//
+	//VertexInputDescription description;
+	//
+	////we will have just 1 vertex buffer binding, with a per-vertex rate
+	//VkVertexInputBindingDescription mainBinding = {};
+	//mainBinding.binding = 0;
+	//mainBinding.stride = sizeof(Vertex);
+	//mainBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	//
+	//description.BINDINGS.push_back(mainBinding);
+	//
+	////Position will be stored at Location 0
+	//VkVertexInputAttributeDescription positionAttribute = {};
+	//positionAttribute.binding = 0;
+	//positionAttribute.location = 0;
+	//positionAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+	//positionAttribute.offset = offsetof(Vertex, position);
+	//
+	////Normal will be stored at Location 1
+	//VkVertexInputAttributeDescription normalAttribute = {};
+	//normalAttribute.binding = 0;
+	//normalAttribute.location = 1;
+	//normalAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+	//normalAttribute.offset = offsetof(Vertex, normal);
+	//
+	////Color will be stored at Location 2
+	//VkVertexInputAttributeDescription colorAttribute = {};
+	//colorAttribute.binding = 0;
+	//colorAttribute.location = 2;
+	//colorAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+	//colorAttribute.offset = offsetof(Vertex, color);
+	//
+	//description.ATTRIBUTES.push_back(positionAttribute);
+	//description.ATTRIBUTES.push_back(normalAttribute);
+	//description.ATTRIBUTES.push_back(colorAttribute);
 
 	//------------
 
-	vertexInputInfo.vertexBindingDescriptionCount = description.BINDINGS.size();
-	vertexInputInfo.pVertexBindingDescriptions =  description.BINDINGS.data();
-	vertexInputInfo.vertexAttributeDescriptionCount = description.ATTRIBUTES.size();
-	vertexInputInfo.pVertexAttributeDescriptions = description.ATTRIBUTES.data();
+	vertexInputInfo.vertexBindingDescriptionCount = MESH.description.BINDINGS.size();
+	vertexInputInfo.pVertexBindingDescriptions = MESH.description.BINDINGS.data();
+	vertexInputInfo.vertexAttributeDescriptionCount = MESH.description.ATTRIBUTES.size();
+	vertexInputInfo.pVertexAttributeDescriptions = MESH.description.ATTRIBUTES.data();
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;

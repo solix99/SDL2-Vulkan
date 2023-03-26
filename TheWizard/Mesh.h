@@ -26,6 +26,14 @@ public:
 		glm::vec3 color;
 	};
 
+	struct VertexInputDescription
+	{
+		std::vector<VkVertexInputBindingDescription> BINDINGS;
+		std::vector<VkVertexInputAttributeDescription> ATTRIBUTES;
+		VkPipelineVertexInputStateCreateFlags flags;
+	}VID;
+
+	VertexInputDescription description;
 
 	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
