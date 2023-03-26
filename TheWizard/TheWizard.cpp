@@ -335,7 +335,7 @@ void vkRender()
 {
 	VkDeviceSize offset = 0;
 
-	cout << VK.MESH->getBindingDescription()  << " " << VK.MESH->getAttributeDescription().size() << " " << VK.MESH->getAttributeDescription().data() << endl;
+	//cout << VK.MESH->getBindingDescription()  << " " << VK.MESH->getAttributeDescription().size() << " " << VK.MESH->getAttributeDescription().data() << endl;
 
 	vkAcquireNextImageKHR(VK.getLogicalDevice(), VK.getSwapchain(), UINT64_MAX, VK.getSemaphoreAvailable(), VK_NULL_HANDLE, VK.getImageIndex());
 
@@ -349,11 +349,11 @@ void vkRender()
 
 	vkCmdBeginRenderPass(VK.getCommandBuffer(), VK.getRenderPassBeginInfo(), VK_SUBPASS_CONTENTS_INLINE);
 
-	vkCmdBindPipeline(VK.getCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, VK.getGraphicsPipeline());
+	vkCmdBindPipeline(VK.getCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, VK.getCurrentPipeline());
 	
 	vkCmdBindVertexBuffers(VK.getCommandBuffer(), 0, 1, VK.MESH->getVertexBuffer(), &offset);
 
-	//cout << endl << VK.MESH->getVertexBuffer() << " " << VK.MESH->getVerticesSize();
+	cout << endl << VK.MESH->getVertexBuffer() << " " << VK.MESH->getVerticesSize();
 
 	// Issue draw commands
 
@@ -1115,9 +1115,12 @@ bool init()
 			}
 		}
 	}
+
+	VK.initPipeline("PIPE1","shaders/colored_triangle_vertex.spv","shaders/colored_triangle_frag.spv");
+	VK.initPipeline("PIPE2", "shaders/tri_mesh.spv", "shaders/colored_triangle_frag.spv");
+
 	return success;
 }
-
 
 
 bool connectToGameServer()
@@ -1372,10 +1375,6 @@ bool loadMedia()
 void close()
 {
 
-
-
-
-
 	Mix_FreeChunk(bluebullet_sound);
 	Mix_FreeMusic(gMusic);
 	gMusic = NULL;
@@ -1463,7 +1462,6 @@ void testEnviroment()
 int main(int argc, char* args[])
 {
 	
-
 	if (!init())
 	{
 		printf("Failed to initialize SDL!\n");

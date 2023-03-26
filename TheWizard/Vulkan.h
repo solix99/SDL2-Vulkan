@@ -19,6 +19,8 @@
 #include <deque>
 #include <vk_mem_alloc.h>
 #include "Mesh.h"
+#include <string>
+#include <algorithm>
 
 using namespace std;
 
@@ -69,8 +71,11 @@ public:
 	VkCommandPool getCommandPool() const;
 	VkPhysicalDevice getPhysicalDevice() const;
     VkInstance getInstance() const;
+	void initPipeline(string name, string sShaderVertex, string sShaderFragment);
+	VkPipeline getPipeline(string name);
+	VkPipeline getCurrentPipeline();
 
-	void switchPipeline();
+	VkPipeline switchPipeline();
 	void setCurrentGraphicsPipeline(VkPipeline pipeline);
 
 	Mesh* MESH = nullptr;
@@ -92,9 +97,7 @@ private:
 	VkRenderPassCreateInfo RENDER_PASS_INFO_VK = {};
 	VkRenderPass RENDER_PASS_VK = VK_NULL_HANDLE;
 	vector<VkFramebuffer> SWAPCHAIN_FRAMEBUFFER_VK;
-	VkPipeline GRAPHICS_PIPELINE_VK = VK_NULL_HANDLE;
-	VkPipeline GRAPHICS_PIPELINE_2_VK = VK_NULL_HANDLE;
-	VkPipeline GRAPHICS_PIPELINE_CURRENT_VK = VK_NULL_HANDLE;
+
 	VkBuffer VERTEX_BUFFER_VK = VK_NULL_HANDLE;
 	uint32_t GRAPHICS_QUEUE_FAMILY_INDEX_VK = UINT32_MAX;
 	VkCommandPool COMMAND_POOL_VK = nullptr;
@@ -113,9 +116,21 @@ private:
 	LWindow *WINDOW;
 	DeletionQueue _mainDeletionQueue;
 	VmaAllocator ALLOCATOR;
+	VkSurfaceCapabilitiesKHR surfaceCapabilities;
 	VmaAllocatorCreateInfo ALLOCATOR_INFO = {};
-	VkPipeline GRAPHICS_MESH_PIPELINE_VK;
 
+	VkPipeline GRAPHICS_PIPELINE_VK = VK_NULL_HANDLE;
+	VkPipeline GRAPHICS_PIPELINE_2_VK = VK_NULL_HANDLE;
+	VkPipeline GRAPHICS_PIPELINE_CURRENT_VK = VK_NULL_HANDLE;
+	VkPipeline GRAPHICS_MESH_PIPELINE_VK = VK_NULL_HANDLE;
+	
+	struct PIPELINES
+	{
+		size_t CURRENT = 0;
+		vector <string> NAME;
+		vector <VkPipeline> GRAPHICS_PIPELINES_VK;
+	}PIPE;
+	
 };
 
 #endif
