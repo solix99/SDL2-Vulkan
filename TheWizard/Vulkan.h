@@ -70,14 +70,15 @@ public:
 	VkCommandPool getCommandPool() const;
 	VkPhysicalDevice getPhysicalDevice() const;
     VkInstance getInstance() const;
-	void initPipeline(string name, string sShaderVertex, string sShaderFragment);
+	void initPipeline(string name, string sShaderVertex, string sShaderFragment,Mesh & MESH);
 	VkPipeline getPipeline(string name);
 	VkPipeline getCurrentPipeline();
 	VkPipeline switchPipeline();
 	void setCurrentGraphicsPipeline(VkPipeline pipeline);
-	VkPipelineLayout getPipelineLayout();
+	VkPipelineLayout getPipelineLayout(Mesh & MESH);
 
 	Mesh MESH;
+	//Mesh MESH_MONKEY;
 
 private:
 

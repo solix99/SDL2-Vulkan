@@ -1,4 +1,6 @@
 // TheWizard.cpp : This file contains the 'main' function. Program execution begins and ends there.
+
+#define TINYOBJLOADER_IMPLEMENTATION
 #define VMA_IMPLEMENTATION
 
 #include <winsock2.h>
@@ -234,6 +236,15 @@ bool collisionFound = false, addNewCollisionAnim = false;
 
 struct engineParameters
 {
+	struct CAMERA
+	{
+		glm::mat4 view;
+		glm::mat4 projection;
+		glm::mat4 model;
+		glm::mat4 mesh_matrix;
+		glm::vec3 camPos{0.f, 0.f, -2.f};
+	}CAM;
+
 	struct FSTREAM
 	{
 		fstream gameLog;
@@ -305,6 +316,10 @@ struct engineParameters
 	struct RENDERING
 	{
 		VkPipelineVertexInputStateCreateInfo VERTEX_INPUT_INFO = {};
+		struct MeshPushConstants {
+			glm::vec4 data;
+			glm::mat4 render_matrix;
+		}MPC;
 
 	}RND;
 
@@ -332,14 +347,19 @@ VkShaderModule createShaderModule(VkDevice device, const std::vector<char>& code
 uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 void recordRenderCommands(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+void handleCamera();
 
 
 
-
-int _frameNumber{ 1 };
-glm::vec3 camPos{0.f, 0.f, -2.f};
-
-
+void handleCamera()
+{
+	EP.CAM.view = glm::translate(glm::mat4(1.f), EP.CAM.camPos);
+	EP.CAM.projection = glm::perspective(glm::radians(70.f), 16.f / 9.f, 0.1f, 200.0f);
+	EP.CAM.projection[1][1] *= -1;
+	EP.CAM.model = glm::rotate(glm::mat4{ 1.f}, glm::radians(1 * 0.4f), glm::vec3(0, 1, 0));
+	EP.CAM.mesh_matrix = EP.CAM.projection * EP.CAM.view * EP.CAM.model;
+	VK.MESH.pushConstants.render_matrix = EP.CAM.mesh_matrix;
+}
 
 
 void vkRender()
@@ -364,28 +384,13 @@ void vkRender()
 	
 	vkCmdBindVertexBuffers(VK.getCommandBuffer(), 0, 1, VK.MESH.getVertexBuffer(), &offset);
 	
-	//cout << endl << VK.MESH.getVertexBuffer() << " " << VK.MESH.getVerticesSize();
+//	cout << endl << VK.MESH_MONKEY.getVertexBuffer() << " " << VK.MESH_MONKEY.getVerticesSize();
 
-	// Issue draw commands
-	
-	_frameNumber++;
+	EP.RND.MPC.render_matrix = EP.CAM.mesh_matrix;
 
-	//camera position
+	//cout<<endl<< sizeof(VK.MESH_MONKEY.pushConstants) << " " << &EP.RND.MPC;
 
-	glm::mat4 view = glm::translate(glm::mat4(1.f), camPos);
-	//camera projection
-	glm::mat4 projection = glm::perspective(glm::radians(70.f), 16.f / 9.f, 0.1f, 200.0f);
-	projection[1][1] *= -1;
-	//model rotation
-	glm::mat4 model = glm::rotate(glm::mat4{ 1.f}, glm::radians(_frameNumber * 0.4f), glm::vec3(0, 1, 0));
-
-	//calculate final mesh matrix
-	glm::mat4 mesh_matrix = projection * view * model;
-
-	VK.MESH.pushConstants.render_matrix = mesh_matrix;
-
-	//upload the matrix to the GPU via push constants
-	vkCmdPushConstants(VK.getCommandBuffer(), VK.getPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(VK.MESH.pushConstants), &VK.MESH.pushConstants);
+	vkCmdPushConstants(VK.getCommandBuffer(), VK.getPipelineLayout(VK.MESH), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(VK.MESH.pushConstants), &EP.RND.MPC);
 
 	vkCmdDraw(VK.getCommandBuffer(), VK.MESH.getVerticesSize(), 1, 0, 0);
 
@@ -1147,7 +1152,7 @@ bool init()
 	}
 
 	//VK.initPipeline("PIPE1","shaders/colored_triangle_vertex.spv","shaders/colored_triangle_frag.spv");
-	VK.initPipeline("PIPE2", "shaders/tri_mesh.spv", "shaders/colored_triangle_frag.spv");
+	VK.initPipeline("PIPE2", "shaders/tri_mesh.spv", "shaders/colored_triangle_frag.spv",VK.MESH);
 
 	return success;
 }
@@ -1476,40 +1481,41 @@ void testEnviroment()
 			}
 			else if (e.type == SDL_KEYDOWN)
 			{
-				if (e.key.keysym.sym == SDLK_SPACE)
+				if (e.key.keysym.sym == SDLK_ESCAPE)
 				{
 					
 				}	
 				else if (e.key.keysym.sym == SDLK_LCTRL)
 				{
-					camPos.y += 0.1f;
+					EP.CAM.camPos.y += 0.1f;
 				}
-				else if (e.key.keysym.sym == SDLK_KP_SPACE)
+				else if (e.key.keysym.sym == SDLK_SPACE)
 				{
-					camPos.y -= 0.1f;
+					EP.CAM.camPos.y -= 0.1f;
 				}
 				else if (e.key.keysym.sym == SDLK_a)
 				{
-					camPos.x += 0.1f;
+					EP.CAM.camPos.x += 0.1f;
 				}
 				else if (e.key.keysym.sym == SDLK_d)
 				{
-					camPos.x -= 0.1f;
+					EP.CAM.camPos.x -= 0.1f;
 				}
 				else if (e.key.keysym.sym == SDLK_w)
 				{
-					camPos.z += 0.1f;
+					EP.CAM.camPos.z += 0.1f;
 				}
 				else if (e.key.keysym.sym == SDLK_s)
 				{
-					camPos.z -= 0.1f;
+					EP.CAM.camPos.z -= 0.1f;
 				}
 			}
 		}
 		gWindow.handleEvent(e);
 
-		vkRender();
+		handleCamera();
 
+		vkRender();
 	}
 }
 

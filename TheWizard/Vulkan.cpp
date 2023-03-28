@@ -40,7 +40,11 @@ Vulkan::Vulkan(LWindow &window)
 
 	initVulkan();
 
-	MESH.meshInit(PHYSICAL_DEVICE_VK,LOGICAL_DEVICE_VK,INSTANCE_VK,COMMAND_POOL_VK,COMMAND_BUFFER_VK,GRAPHICS_QUEUE_VK);
+	//MESH.meshInit(PHYSICAL_DEVICE_VK,LOGICAL_DEVICE_VK,INSTANCE_VK,COMMAND_POOL_VK,COMMAND_BUFFER_VK,GRAPHICS_QUEUE_VK);
+
+	//MESH_MONKEY = Mesh("assets/cube.obj");
+
+	MESH.meshInit(PHYSICAL_DEVICE_VK, LOGICAL_DEVICE_VK, INSTANCE_VK, COMMAND_POOL_VK, COMMAND_BUFFER_VK, GRAPHICS_QUEUE_VK);
 
 }
 
@@ -170,7 +174,7 @@ VkPipeline Vulkan::getPipeline(string name)
 }
 
 
-VkPipelineLayout Vulkan::getPipelineLayout()
+VkPipelineLayout Vulkan::getPipelineLayout(Mesh & MESH)
 {
 	// Create a descriptor set layout for the uniform values
 	VkDescriptorSetLayoutBinding layoutBinding = {};
@@ -198,6 +202,7 @@ VkPipelineLayout Vulkan::getPipelineLayout()
 	pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipelineLayoutCreateInfo.setLayoutCount = 1;
 	pipelineLayoutCreateInfo.pSetLayouts = &descriptorSetLayout;
+
 	VkPushConstantRange pushConstant = {};
 	int pushConstantOffset = 0;
 	pushConstant.size = sizeof(MESH.pushConstants);
@@ -220,11 +225,11 @@ VkPipelineLayout Vulkan::getPipelineLayout()
 }
 
 
-void Vulkan::initPipeline(string name,string sShaderVertex,string sShaderFragment)
+void Vulkan::initPipeline(string name,string sShaderVertex,string sShaderFragment,Mesh & MESH)
 {
 	PIPE.NAME.push_back(name);
 
-	VkPipelineLayout pipelineLayout = getPipelineLayout();
+	VkPipelineLayout pipelineLayout = getPipelineLayout(MESH);
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;

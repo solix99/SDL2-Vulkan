@@ -3,6 +3,7 @@
 #ifndef MESH_H
 #define MESH_H
 
+#include <Vulkan/tiny_obj_loader.h>
 #include <vector>
 #include <array>
 #include <glm/vec3.hpp>
@@ -10,20 +11,23 @@
 #include <glm/glm.hpp>
 #include <vulkan.h>
 #include <SDL_vulkan.h>
+#include <iostream>
+#include <string>
 #include <vk_mem_alloc.h>
-
-
+#include <unordered_map>
 
 class Mesh
 {
 public:
 	Mesh();
+	Mesh(const char* filename);
 
 	struct Vertex
 	{
 		glm::vec3 position;
 		glm::vec3 normal;
 		glm::vec3 color;
+		glm::vec2 texcoord;
 	};
 
 	struct MeshPushConstants {
@@ -41,18 +45,13 @@ public:
 	VertexInputDescription description;
 	MeshPushConstants pushConstants;
 
-	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
-	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
-	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-	VkCommandBuffer beginSingleTimeCommands();
-	void endSingleTimeCommands(VkCommandBuffer commandBuffer);
 	void meshInit(VkPhysicalDevice PHYSICAL_DEVICE_P, VkDevice LOGICAL_DEVICE_P, VkInstance INSTACE_P, VkCommandPool COMMAND_POOL_P, VkCommandBuffer COMMAND_BUFFER_P, VkQueue GRAPHICS_QUEUE_P);
 
 	uint32_t getVerticesSize();
 	VkBuffer *getVertexBuffer();
 
-	//const std::vector<Vertex>& getVertices(size_t start) const { return std::vector<Vertex>(vertices.begin() + start, vertices.end());}
-	//const std::vector<Vertex>& getVertices() const {return vertices;}
+	const std::vector<Vertex>& getVertices(size_t start) const { return std::vector<Vertex>(vertices.begin() + start, vertices.end());}
+	const std::vector<Vertex>& getVertices() const {return vertices;}
 
 	void loadMesh();
 	void uploadMesh();
