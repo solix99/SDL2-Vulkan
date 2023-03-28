@@ -155,7 +155,6 @@ Mesh::Mesh(const char* filename)
             index_offset += fv;
         }
     }
-
    // std::cout << std::endl << vertices.size() << std::endl << attrib.vertices.size();
 
 }
