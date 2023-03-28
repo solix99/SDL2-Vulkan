@@ -36,126 +36,23 @@ Mesh::Mesh()
     description.ATTRIBUTES.push_back(normalAttribute);
     description.ATTRIBUTES.push_back(colorAttribute);
 
+    std::cout << std::endl << &MPC << " - MPC VAL";
+
 }
 
+
+glm::vec4 Mesh::getPushConstantsData()
+{
+    return pushConstants.data;
+}
+glm::mat4 Mesh::getPushConstantsMatrix()
+{
+    return pushConstants.render_matrix;
+}
 
 Mesh::Mesh(const char* filename)
 {
 
-    struct IndexHash {
-        std::size_t operator()(const tinyobj::index_t& idx) const {
-            std::size_t h1 = std::hash<int>()(idx.vertex_index);
-            std::size_t h2 = std::hash<int>()(idx.normal_index);
-            std::size_t h3 = std::hash<int>()(idx.texcoord_index);
-            return h1 ^ (h2 << 1) ^ (h3 << 2);
-        }
-    };
-
-    // Define a custom equality operator for tinyobj::index_t objects
-    struct IndexEqual {
-        bool operator()(const tinyobj::index_t& lhs, const tinyobj::index_t& rhs) const {
-            return lhs.vertex_index == rhs.vertex_index &&
-                lhs.normal_index == rhs.normal_index &&
-                lhs.texcoord_index == rhs.texcoord_index;
-        }
-    };
-
-
-    //attrib will contain the vertex arrays of the file
-    tinyobj::attrib_t attrib;
-    //shapes contains the info for each separate object in the file
-    std::vector<tinyobj::shape_t> shapes;
-    //materials contains the information about the material of each shape, but we won't use it.
-    std::vector<tinyobj::material_t> materials;
-
-    std::unordered_map<tinyobj::index_t, size_t, IndexHash, IndexEqual> vertex_map;
-
-
-    //error and warning output from the load function
-    std::string warn;
-    std::string err;
-
-    //load the OBJ file
-    tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filename, nullptr);
-    //make sure to output the warnings to the console, in case there are issues with the file
-    if (!warn.empty()) 
-    {
-        std::cout << "WARN: " << warn << std::endl;
-    }
-    //if we have any error, print it to the console, and break the mesh loading.
-    //This happens if the file can't be found or is malformed
-    if (!err.empty())
-    {
-        std::cerr << err << std::endl;
-    }
-    bool valid = false;
-
-    std::cout << std::endl << vertices.size() << std::endl << attrib.vertices.size();
-
-    // Loop over shapes
-    for (size_t s = 0; s < shapes.size(); s++) {
-
-        // Loop over faces(polygon)
-        size_t index_offset = 0;
-        for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++)
-        {
-
-            // Determine the number of vertices in the face
-            int fv = shapes[s].mesh.num_face_vertices[f];
-
-            // Loop over vertices in the face
-            for (size_t v = 0; v < fv; v++) {
-                // Access the index of the current vertex
-                tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + v];
-
-                // Check if the vertex has already been loaded
-                auto it = vertex_map.find(idx);
-                if (it != vertex_map.end())
-                {
-                    // Reuse the existing vertex
-                    vertices.push_back(vertices[it->second]);
-                }
-                else
-                {
-                    // Create a new vertex
-                    Vertex new_vert;
-
-                    // Set the position of the vertex
-                    new_vert.position.x = attrib.vertices[3 * idx.vertex_index + 0];
-                    new_vert.position.y = attrib.vertices[3 * idx.vertex_index + 1];
-                    new_vert.position.z = attrib.vertices[3 * idx.vertex_index + 2];
-
-                    // Set the normal of the vertex
-                    if (idx.normal_index >= 0) {
-                        new_vert.normal.x = attrib.normals[3 * idx.normal_index + 0];
-                        new_vert.normal.y = attrib.normals[3 * idx.normal_index + 1];
-                        new_vert.normal.z = attrib.normals[3 * idx.normal_index + 2];
-                    }
-
-                    // Set the texture coordinates of the vertex
-                    if (idx.texcoord_index >= 0) {
-                        new_vert.texcoord.x = attrib.texcoords[2 * idx.texcoord_index + 0];
-                        new_vert.texcoord.y = attrib.texcoords[2 * idx.texcoord_index + 1];
-                    }
-
-                    // Set the color of the vertex as the normal (for display purposes)
-                   // new_vert.color.x = new_vert.normal.x;
-                    //new_vert.color.y = new_vert.normal.y;
-                   // new_vert.color.z = new_vert.normal.z;
-
-                    // Add the vertex to the mesh's vertex list
-                    vertices.push_back(new_vert);
-
-                    // Add the vertex index to the map
-                    vertex_map[idx] = vertices.size() - 1;
-                }
-            }
-
-            // Update the index offset for the next face
-            index_offset += fv;
-        }
-    }
-   // std::cout << std::endl << vertices.size() << std::endl << attrib.vertices.size();
 
 }
 
@@ -169,18 +66,63 @@ void Mesh::meshInit(VkPhysicalDevice PHYSICAL_DEVICE_P, VkDevice LOGICAL_DEVICE_
     COMMAND_POOL = COMMAND_POOL_P;
     COMMAND_BUFFER = COMMAND_BUFFER_P;
 
+    const char * filename = "assets/Suzanne.obj";
+
+    tinyobj::attrib_t attrib;
+    std::vector<tinyobj::shape_t> shapes;
+    std::vector<tinyobj::material_t> materials;
+    std::string warn, err;
+
+    bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filename);
+    if (!warn.empty()) std::cout << "WARN: " << warn << std::endl;
+    if (!err.empty()) std::cerr << err << std::endl;
+    if (!ret) exit(1);
+
+    for (const auto& shape : shapes)
+    {
+        for (const auto& index : shape.mesh.indices)
+        {
+            Vertex v = {};
+            if (index.vertex_index >= 0 && index.vertex_index < attrib.vertices.size() / 3) {
+                v.position = glm::vec3(attrib.vertices[3 * index.vertex_index + 0],
+                    attrib.vertices[3 * index.vertex_index + 1],
+                    attrib.vertices[3 * index.vertex_index + 2]);
+            }
+            if (index.normal_index >= 0 && index.normal_index < attrib.normals.size() / 3) {
+                v.normal = glm::vec3(attrib.normals[3 * index.normal_index + 0],
+                    attrib.normals[3 * index.normal_index + 1],
+                    attrib.normals[3 * index.normal_index + 2]);
+            }
+            if (index.texcoord_index >= 0 && index.texcoord_index < attrib.texcoords.size() / 2) {
+                v.texcoord = glm::vec2(attrib.texcoords[2 * index.texcoord_index + 0],
+                    attrib.texcoords[2 * index.texcoord_index + 1]);
+            }
+            v.color = glm::vec3(1.0f, 1.0f, 1.0f);
+            vertices.push_back(v);
+        }
+    }
+    std::cout << "Loaded " << filename << " with " << vertices.size() << " vertices" << std::endl;
+
+   for (int i = 0; i < vertices.size(); i++)
+   {
+       if(i%2==0)
+       vertices[i].color = { 0.f, 1.f, 0.0f }; //pure green
+   }
+
+
     VmaAllocatorCreateInfo allocatorInfo = {};
     allocatorInfo.physicalDevice = PHYSICAL_DEVICE;
     allocatorInfo.device = LOGICAL_DEVICE;
     allocatorInfo.instance = INSTANCE;
     vmaCreateAllocator(&allocatorInfo, &ALLOCATOR);
   
-    loadMesh();
+    uploadMesh();
 }
 
 
 uint32_t Mesh::getVerticesSize()
 {
+    //std::cout << std::endl << "IN MESH :" << vertices.size();
     return vertices.size();
 }
 
@@ -192,19 +134,48 @@ VkBuffer* Mesh::getVertexBuffer()
 
 void Mesh::loadMesh()
 {
-    
-    //make the array 3 vertices long
-    vertices.resize(3);
+    vertices.resize(8);
 
-    //vertex positions
-    vertices[0].position = { 0.5f, 1.f, 0.0f };
-    vertices[1].position = { -1.f, 1.f, 0.0f };
-    vertices[2].position = { 0.f,-1.f, 0.0f };
+   //vertices = {
+   //   // front
+   //   { { -0.5f, -0.5f,  0.5f }, { 0.f, 0.f, 1.f } },
+   //   { {  0.5f, -0.5f,  0.5f }, { 0.f, 0.f, 1.f } },
+   //   { {  0.5f,  0.5f,  0.5f }, { 0.f, 0.f, 1.f } },
+   //   { { -0.5f,  0.5f,  0.5f }, { 0.f, 0.f, 1.f } },
+   //
+   //   // back
+   //   { { -0.5f, -0.5f, -0.5f }, { 0.f, 0.f, -1.f } },
+   //   { { -0.5f,  0.5f, -0.5f }, { 0.f, 0.f, -1.f } },
+   //   { {  0.5f,  0.5f, -0.5f }, { 0.f, 0.f, -1.f } },
+   //   { {  0.5f, -0.5f, -0.5f }, { 0.f, 0.f, -1.f } },
+   //
+   //   // top
+   //   { { -0.5f,  0.5f,  0.5f }, { 0.f, 1.f, 0.f } },
+   //   { {  0.5f,  0.5f,  0.5f }, { 0.f, 1.f, 0.f } },
+   //   { {  0.5f,  0.5f, -0.5f }, { 0.f, 1.f, 0.f } },
+   //   { { -0.5f,  0.5f, -0.5f }, { 0.f, 1.f, 0.f } },
+   //
+   //   // bottom
+   //   { { -0.5f, -0.5f,  0.5f }, { 0.f, -1.f, 0.f } },
+   //   { { -0.5f, -0.5f, -0.5f }, { 0.f, -1.f, 0.f } },
+   //   { {  0.5f, -0.5f, -0.5f }, { 0.f, -1.f, 0.f } },
+   //   { {  0.5f, -0.5f,  0.5f }, { 0.f, -1.f, 0.f } },
+   //
+   //   // left
+   //   { { -0.5f, -0.5f,  0.5f }, { -1.f, 0.f, 0.f } },
+   //   { { -0.5f,  0.5f,  0.5f }, { -1.f, 0.f, 0.f } },
+   //   { { -0.5f,  0.5f, -0.5f }, { -1.f, 0.f, 0.f } },
+   //   { { -0.5f, -0.5f, -0.5f }, { -1.f, 0.f, 0.f } },
+   //
+   //   // right
+   //   { {  0.5f, -0.5f,  0.5f }, { 1.f, 0.f, 0.f } },
+   //   { {  0.5f, -0.5f, -0.5f }, { 1.f, 0.f, 0.f } },
+   //   { {  0.5f,  0.5f, -0.5f }, { 1.f, 0.f, 0.f } },
+   //   { {  0.5f,  0.5f,  0.5f }, { 1.f, 0.f, 0.f } },
+   //;
 
-    //vertex colors, all green
-    vertices[0].color = { 0.f, 1.f, 0.0f }; //pure green
-    vertices[1].color = { 0.f, 1.f, 0.0f }; //pure green
-    vertices[2].color = { 0.f, 1.f, 0.0f }; //pure green
+
+    //loop over vertices
     
     uploadMesh();
 }

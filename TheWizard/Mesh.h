@@ -15,6 +15,10 @@
 #include <string>
 #include <vk_mem_alloc.h>
 #include <unordered_map>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
+using namespace std;
 
 class Mesh
 {
@@ -50,9 +54,8 @@ public:
 	uint32_t getVerticesSize();
 	VkBuffer *getVertexBuffer();
 
-	const std::vector<Vertex>& getVertices(size_t start) const { return std::vector<Vertex>(vertices.begin() + start, vertices.end());}
-	const std::vector<Vertex>& getVertices() const {return vertices;}
-
+	glm::vec4 getPushConstantsData();
+	glm::mat4 getPushConstantsMatrix();
 	void loadMesh();
 	void uploadMesh();
 

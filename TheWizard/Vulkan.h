@@ -43,6 +43,12 @@ struct DeletionQueue
 	}
 };
 
+struct AllocatedImage {
+	VkImage _image;
+	VmaAllocation _allocation;
+};
+
+
 class Vulkan
 {
 public:
@@ -76,6 +82,9 @@ public:
 	VkPipeline switchPipeline();
 	void setCurrentGraphicsPipeline(VkPipeline pipeline);
 	VkPipelineLayout getPipelineLayout(Mesh & MESH);
+
+	VkImageCreateInfo imageCreateInfo(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent);
+	VkImageViewCreateInfo imageViewCreateInfo(VkFormat format, VkImage image, VkImageAspectFlags aspectFlags);
 
 	Mesh MESH;
 	//Mesh MESH_MONKEY;
@@ -120,7 +129,6 @@ private:
 
 	VkPipelineLayout meshPipelineLayout = VK_NULL_HANDLE;
 
-	
 	VkResult result = VK_SUCCESS;
 
 	struct PIPELINES
@@ -129,6 +137,10 @@ private:
 		vector <string> NAME;
 		vector <VkPipeline> GRAPHICS_PIPELINES_VK;
 	}PIPE;
+
+	VkImageView _depthImageView;
+	AllocatedImage _depthImage;
+	VkFormat _depthFormat;
 	
 };
 

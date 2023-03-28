@@ -16,7 +16,6 @@ VkShaderModule Shader::createShaderModule(VkDevice device, const std::vector<cha
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	createInfo.codeSize = code.size();
 	createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
-	cout << endl << createInfo.pCode << "-code";
 	VkShaderModule shaderModule = VK_NULL_HANDLE;
 
 	if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)

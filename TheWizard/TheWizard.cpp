@@ -242,7 +242,10 @@ struct engineParameters
 		glm::mat4 projection;
 		glm::mat4 model;
 		glm::mat4 mesh_matrix;
-		glm::vec3 camPos{0.f, 0.f, -2.f};
+		glm::vec3 camPos{0.f, 0.f, -10.f};
+		glm::vec3 camFront = glm::vec3(0.0f, 0.0f, 1.0f);
+		glm::vec3 camUp = glm::vec3(0.0f, 1.0f, 0.0f);
+
 	}CAM;
 
 	struct FSTREAM
@@ -321,6 +324,9 @@ struct engineParameters
 			glm::mat4 render_matrix;
 		}MPC;
 
+
+
+
 	}RND;
 
 }EP;
@@ -353,12 +359,33 @@ void handleCamera();
 
 void handleCamera()
 {
-	EP.CAM.view = glm::translate(glm::mat4(1.f), EP.CAM.camPos);
-	EP.CAM.projection = glm::perspective(glm::radians(70.f), 16.f / 9.f, 0.1f, 200.0f);
-	EP.CAM.projection[1][1] *= -1;
+	
+
+	// Calculate view matrix
+	EP.CAM.view = glm::lookAt(EP.CAM.camPos, EP.CAM.camPos + EP.CAM.camFront, EP.CAM.camUp);
+
+	// Calculate projection matrix with depth information
+	float nearPlane = 0.1f;
+	float farPlane = 200.0f;
+	float aspectRatio = 16.0f / 9.0f;
+	float fov = 70.0f;
+	float tanHalfFov = tan(glm::radians(fov / 2.0f));
+	glm::mat4 projection = glm::mat4(0.0f);
+	projection[0][0] = 1.0f / (aspectRatio * tanHalfFov);
+	projection[1][1] = 1.0f / tanHalfFov;
+	projection[2][2] = -(farPlane + nearPlane) / (farPlane - nearPlane);
+	projection[2][3] = -1.0f;
+	projection[3][2] = -(2.0f * farPlane * nearPlane) / (farPlane - nearPlane);
+
+	// Modify projection matrix to invert y-axis to match OpenGL coordinate system
+	projection[1][1] *= -1;
+
+	// Calculate model matrix
 	EP.CAM.model = glm::rotate(glm::mat4{ 1.f}, glm::radians(1 * 0.4f), glm::vec3(0, 1, 0));
-	EP.CAM.mesh_matrix = EP.CAM.projection * EP.CAM.view * EP.CAM.model;
-	VK.MESH.pushConstants.render_matrix = EP.CAM.mesh_matrix;
+
+	// Combine view, projection, and model matrices
+	EP.CAM.mesh_matrix = projection * EP.CAM.view * EP.CAM.model;
+
 }
 
 
@@ -386,11 +413,17 @@ void vkRender()
 	
 //	cout << endl << VK.MESH_MONKEY.getVertexBuffer() << " " << VK.MESH_MONKEY.getVerticesSize();
 
-	EP.RND.MPC.render_matrix = EP.CAM.mesh_matrix;
+	struct MeshPushConstants {
+		glm::vec4 data;
+		glm::mat4 render_matrix;
+	};
 
-	//cout<<endl<< sizeof(VK.MESH_MONKEY.pushConstants) << " " << &EP.RND.MPC;
+	MeshPushConstants constants;
+	constants.render_matrix = EP.CAM.mesh_matrix;
 
-	vkCmdPushConstants(VK.getCommandBuffer(), VK.getPipelineLayout(VK.MESH), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(VK.MESH.pushConstants), &EP.RND.MPC);
+	//cout << endl << &EP.RND.MPC << " " << sizeof(VK.MESH.pushConstants) << " " << VK.MESH.getVerticesSize() << " " <<  VK.MESH.getVertexBuffer();
+
+	vkCmdPushConstants(VK.getCommandBuffer(), VK.getPipelineLayout(VK.MESH), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &constants);
 
 	vkCmdDraw(VK.getCommandBuffer(), VK.MESH.getVerticesSize(), 1, 0, 0);
 
@@ -1508,6 +1541,14 @@ void testEnviroment()
 				else if (e.key.keysym.sym == SDLK_s)
 				{
 					EP.CAM.camPos.z -= 0.1f;
+				}
+				else if (e.key.keysym.sym == SDLK_r)
+				{
+					EP.CAM.camUp.y += 1.0f; // Move camera up by 1 unit
+				}
+				else if (e.key.keysym.sym == SDLK_f)
+				{
+					EP.CAM.camFront.z *= -1.0f; // Invert z-component of camFront to face the other way
 				}
 			}
 		}
