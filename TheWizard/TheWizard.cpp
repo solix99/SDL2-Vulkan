@@ -324,7 +324,7 @@ struct engineParameters
 			glm::mat4 render_matrix;
 		}MPC;
 
-
+		int FRAME_NUMBER = 0;
 
 
 	}RND;
@@ -359,8 +359,6 @@ void handleCamera();
 
 void handleCamera()
 {
-	
-
 	// Calculate view matrix
 	EP.CAM.view = glm::lookAt(EP.CAM.camPos, EP.CAM.camPos + EP.CAM.camFront, EP.CAM.camUp);
 
@@ -386,6 +384,9 @@ void handleCamera()
 	// Combine view, projection, and model matrices
 	EP.CAM.mesh_matrix = projection * EP.CAM.view * EP.CAM.model;
 
+
+	EP.RND.FRAME_NUMBER > 120 ? EP.RND.FRAME_NUMBER = 0 : EP.RND.FRAME_NUMBER++;
+
 }
 
 
@@ -393,19 +394,105 @@ void vkRender()
 {
 	VkDeviceSize offset = 0;
 
-	//cout << VK.MESH->getBindingDescription()  << " " << VK.MESH->getAttributeDescription().size() << " " << VK.MESH->getAttributeDescription().data() << endl;
-
-	vkAcquireNextImageKHR(VK.getLogicalDevice(), VK.getSwapchain(), UINT64_MAX, VK.getSemaphoreAvailable(), VK_NULL_HANDLE, VK.getImageIndex());
+	vkAcquireNextImageKHR(VK.getLogicalDevice(), VK.getSwapchain(), UINT64_MAX, VK.getSemaphoreWait(), VK_NULL_HANDLE, VK.getImageIndex());
 
 	VK.getRenderPassBeginInfo()->framebuffer = VK.getSwapchainFramebuffer(*VK.getImageIndex());
+
+	// begin recording commands
+	vkBeginCommandBuffer(VK.getCommandBuffer(), VK.getCommandBufferBeginInfo());
+
+	//make a clear-color from frame number. This will flash with a 120 frame period.
+	VkClearValue clearValue;
+	float flash = abs(sin(1 / 120.f));
+	clearValue.color = { { 0.0f, 0.0f, flash, 1.0f } };
+
+	//clear depth at 1
+	VkClearValue depthClear;
+	depthClear.depthStencil.depth = 1.f;
+
+	//start the main renderpass.
+	//We will use the clear color from above, and the framebuffer of the index the swapchain gave us
+	VkRenderPassBeginInfo rpInfo = VK.getRenderPassBeginInfoEx();
+
+	//connect clear values
+	rpInfo.clearValueCount = 2;
+
+	VkClearValue clearValues[] = { clearValue, depthClear };
+
+	rpInfo.pClearValues = &clearValues[0];
+
+	vkCmdBeginRenderPass(VK.getCommandBuffer(), &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+	vkCmdBindPipeline(VK.getCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, VK.getCurrentPipeline());
+
+	vkCmdBindVertexBuffers(VK.getCommandBuffer(), 0, 1, VK.MESH.getVertexBuffer(), &offset);
+
+	struct MeshPushConstants {
+		glm::vec4 data;
+		glm::mat4 render_matrix;
+	};
+
+	MeshPushConstants constants;
+	constants.render_matrix = EP.CAM.mesh_matrix;
+
+	vkCmdPushConstants(VK.getCommandBuffer(), VK.getPipelineLayout(VK.MESH), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &constants);
+
+	vkCmdDraw(VK.getCommandBuffer(), VK.MESH.getVerticesSize(), 1, 0, 0);
+
+	vkCmdEndRenderPass(VK.getCommandBuffer());
+
+	// end recording commands
+	vkEndCommandBuffer(VK.getCommandBuffer());
 
 	vkQueueSubmit(VK.getGraphicsQueue(), 1, VK.getSubmitInfo(), VK_NULL_HANDLE);
 
 	vkWaitForFences(VK.getLogicalDevice(), 1, VK.getFenceRenderingFinished(), VK_TRUE, UINT64_MAX);
 
+	vkResetFences(VK.getLogicalDevice(), 1, VK.getFenceRenderingFinished());
+
+	vkQueuePresentKHR(VK.getGraphicsQueue(), VK.getPresentInfo());
+}
+
+
+
+/* 
+void vkRender()
+{
+	VkDeviceSize offset = 0;
+
+	vkAcquireNextImageKHR(VK.getLogicalDevice(), VK.getSwapchain(), UINT64_MAX, VK.getSemaphoreWait(), VK_NULL_HANDLE, VK.getImageIndex());
+
+	VK.getRenderPassBeginInfo()->framebuffer = VK.getSwapchainFramebuffer(*VK.getImageIndex());
+
+	vkQueueSubmit(VK.getGraphicsQueue(), 1, VK.getSubmitInfo(), VK.getFenceRenderingFinishedEx());
+
+	vkWaitForFences(VK.getLogicalDevice(), 1, VK.getFenceRenderingFinished(), VK_TRUE, UINT64_MAX);
+
 	vkBeginCommandBuffer(VK.getCommandBuffer(), VK.getCommandBufferBeginInfo());
 
-	vkCmdBeginRenderPass(VK.getCommandBuffer(), VK.getRenderPassBeginInfo(), VK_SUBPASS_CONTENTS_INLINE);
+
+	//make a clear-color from frame number. This will flash with a 120 frame period.
+	VkClearValue clearValue;
+	float flash = abs(sin(EP.RND.FRAME_NUMBER / 120.f));
+	clearValue.color = { { 0.0f, 0.0f, flash, 1.0f } };
+
+	//clear depth at 1
+	VkClearValue depthClear;
+	depthClear.depthStencil.depth = 1.f;
+
+	//start the main renderpass.
+	//We will use the clear color from above, and the framebuffer of the index the swapchain gave us
+	VkRenderPassBeginInfo rpInfo = VK.getRenderPassBeginInfoEx();
+
+	//connect clear values
+	rpInfo.clearValueCount = 2;
+
+	VkClearValue clearValues[] = { clearValue, depthClear };
+
+	rpInfo.pClearValues = &clearValues[0];
+
+
+	vkCmdBeginRenderPass(VK.getCommandBuffer(), &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 	vkCmdBindPipeline(VK.getCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, VK.getCurrentPipeline());
 	
@@ -436,6 +523,7 @@ void vkRender()
 	vkResetFences(VK.getLogicalDevice(), 1, VK.getFenceRenderingFinished());
 
 }
+*/
 
 bool isDeviceSuitable(VkPhysicalDevice device) 
 {

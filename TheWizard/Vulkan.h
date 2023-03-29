@@ -21,6 +21,7 @@
 #include "Mesh.h"
 #include <string>
 #include <algorithm>
+#include <vulkan/vulkan_core.h>
 
 using namespace std;
 
@@ -43,10 +44,7 @@ struct DeletionQueue
 	}
 };
 
-struct AllocatedImage {
-	VkImage _image;
-	VmaAllocation _allocation;
-};
+
 
 
 class Vulkan
@@ -57,34 +55,47 @@ public:
 	~Vulkan();
 	bool cleanup();
 	bool initVulkan();
-	bool isDeviceSuitable(VkPhysicalDevice) const; 
+	bool isDeviceSuitable(VkPhysicalDevice) ; 
 	VkDevice getLogicalDevice() ;
 	//	create get function for COMMAND_BUFFER_VK, SWAPCHAIN_VK, SEMAPHORE_IMAGE_AVAILABLE_VK, IMAGE_INDEX_VK, SWAPCHAIN_FRAMEBUFFER_VK, SUBMIT_INFO_VK, COMMAND_BUFFER_VK
-	VkCommandBuffer getCommandBuffer() const;
-	VkSwapchainKHR getSwapchain() const;
-	VkSemaphore getSemaphoreImageAvailable() const;
+	VkCommandBuffer getCommandBuffer() ;
+	VkSwapchainKHR getSwapchain() ;
+	VkSemaphore getSemaphoreSignal() ;
 	uint32_t *getImageIndex();
-	VkFramebuffer getSwapchainFramebuffer(int i) const;
+	VkFramebuffer getSwapchainFramebuffer(int i) ;
 	VkSubmitInfo* getSubmitInfo();
-	VkPipeline getGraphicsPipeline() const;
-	VkQueue getGraphicsQueue() const;
+	VkPipeline getGraphicsPipeline() ;
+	VkQueue getGraphicsQueue() ;
 	VkRenderPassBeginInfo *getRenderPassBeginInfo() ;
 	VkCommandBufferBeginInfo *getCommandBufferBeginInfo() ;
-	VkSemaphore getSemaphoreAvailable() const;
+	VkSemaphore getSemaphoreWait() const;
 	VkPresentInfoKHR *getPresentInfo() ;
 	VkFence *getFenceRenderingFinished();
-	VkCommandPool getCommandPool() const;
-	VkPhysicalDevice getPhysicalDevice() const;
-    VkInstance getInstance() const;
+	VkFence getFenceRenderingFinishedEx();
+	VkCommandPool getCommandPool() ;
+	VkPhysicalDevice getPhysicalDevice() ;
+    VkInstance getInstance() ;
 	void initPipeline(string name, string sShaderVertex, string sShaderFragment,Mesh & MESH);
 	VkPipeline getPipeline(string name);
 	VkPipeline getCurrentPipeline();
 	VkPipeline switchPipeline();
 	void setCurrentGraphicsPipeline(VkPipeline pipeline);
 	VkPipelineLayout getPipelineLayout(Mesh & MESH);
+	VkRenderPassBeginInfo getRenderPassBeginInfoEx();
 
 	VkImageCreateInfo imageCreateInfo(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent);
 	VkImageViewCreateInfo imageViewCreateInfo(VkFormat format, VkImage image, VkImageAspectFlags aspectFlags);
+	VkPipelineDepthStencilStateCreateInfo depthStencilCreateInfo(bool bDepthTest, bool bDepthWrite, VkCompareOp compareOp);
+
+	struct AllocatedImage {
+		VkImage _image;
+		VmaAllocation _allocation;
+	};
+
+	VmaAllocator ALLOCATOR;
+	VmaAllocatorCreateInfo ALLOCATOR_INFO = {};
+
+
 
 	Mesh MESH;
 	//Mesh MESH_MONKEY;
@@ -111,8 +122,9 @@ private:
 	VkCommandPool COMMAND_POOL_VK = nullptr;
 	VkCommandBuffer COMMAND_BUFFER_VK = nullptr;
 	VkFence FENCE_RENDERING_FINISHED_VK = nullptr;
-	VkSemaphore SEMAPHORE_IMAGE_AVAILABLE_VK = nullptr;
-	VkSemaphore SEMAPHORE_RENDERING_FINISHED_VK = nullptr;
+	VkFence FENCE_IMAGE_AVAILABE_VK = nullptr;
+	VkSemaphore SEMAPHORE_WAIT_VK = nullptr;
+	VkSemaphore SEMAPHORE_SIGNAL_VK = nullptr;
 	VkPresentInfoKHR PRESENT_INFO_VK = {};
 	uint32_t IMAGE_INDEX_VK = 0;
 	VkCommandBufferBeginInfo COMMAND_BUFFER_BEGIN_INFO_VK = {};
@@ -123,12 +135,8 @@ private:
 	VkShaderModule FRAG_SHADER_MODULE = VK_NULL_HANDLE;
 	LWindow *WINDOW;
 	DeletionQueue _mainDeletionQueue;
-	VmaAllocator ALLOCATOR;
 	VkSurfaceCapabilitiesKHR surfaceCapabilities;
-	VmaAllocatorCreateInfo ALLOCATOR_INFO = {};
-
 	VkPipelineLayout meshPipelineLayout = VK_NULL_HANDLE;
-
 	VkResult result = VK_SUCCESS;
 
 	struct PIPELINES

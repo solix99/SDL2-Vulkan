@@ -49,7 +49,7 @@ public:
 	VertexInputDescription description;
 	MeshPushConstants pushConstants;
 
-	void meshInit(VkPhysicalDevice PHYSICAL_DEVICE_P, VkDevice LOGICAL_DEVICE_P, VkInstance INSTACE_P, VkCommandPool COMMAND_POOL_P, VkCommandBuffer COMMAND_BUFFER_P, VkQueue GRAPHICS_QUEUE_P);
+	void meshInit(VkPhysicalDevice PHYSICAL_DEVICE_P, VkDevice LOGICAL_DEVICE_P, VkInstance INSTACE_P, VkCommandPool COMMAND_POOL_P, VkCommandBuffer COMMAND_BUFFER_P, VkQueue GRAPHICS_QUEUE_P, VmaAllocator ALLOCATOR, VmaAllocatorCreateInfo ALLOCATOR_INFO);
 
 	uint32_t getVerticesSize();
 	VkBuffer *getVertexBuffer();
@@ -72,7 +72,7 @@ private:
 	std::vector<Vertex> vertices;
 
 	VmaAllocator ALLOCATOR;
-	VmaAllocatorCreateInfo ALLOCATOR_INFO = {};
+	VmaAllocatorCreateInfo VmaAllocatorInfo = {};
 
 	struct AllocatedBuffer 
 	{

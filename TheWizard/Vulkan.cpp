@@ -44,7 +44,7 @@ Vulkan::Vulkan(LWindow &window)
 
 	//MESH_MONKEY = Mesh("assets/cube.obj");
 
-	MESH.meshInit(PHYSICAL_DEVICE_VK, LOGICAL_DEVICE_VK, INSTANCE_VK, COMMAND_POOL_VK, COMMAND_BUFFER_VK, GRAPHICS_QUEUE_VK);
+	MESH.meshInit(PHYSICAL_DEVICE_VK, LOGICAL_DEVICE_VK, INSTANCE_VK, COMMAND_POOL_VK, COMMAND_BUFFER_VK, GRAPHICS_QUEUE_VK,ALLOCATOR,ALLOCATOR_INFO);
 }
 
 Vulkan::~Vulkan()
@@ -58,12 +58,12 @@ Vulkan::~Vulkan()
 		});
 }
 	
-VkPhysicalDevice Vulkan::getPhysicalDevice() const
+VkPhysicalDevice Vulkan::getPhysicalDevice()
 {
 	return PHYSICAL_DEVICE_VK;
 }
 
-VkCommandPool Vulkan::getCommandPool() const
+VkCommandPool Vulkan::getCommandPool()
 {
 	return COMMAND_POOL_VK;
 }
@@ -87,43 +87,46 @@ VkSubmitInfo *Vulkan::getSubmitInfo(){
 	return &SUBMIT_INFO_VK;
 }
 
-VkCommandBuffer Vulkan::getCommandBuffer() const {
+VkCommandBuffer Vulkan::getCommandBuffer() {
 	return COMMAND_BUFFER_VK;
 }
 
-VkQueue Vulkan::getGraphicsQueue() const {
+VkQueue Vulkan::getGraphicsQueue() {
 	return GRAPHICS_QUEUE_VK;
 }
 
 VkRenderPassBeginInfo* Vulkan::getRenderPassBeginInfo()  {
 	return &RENDER_PASS_BEGIN_INFO_VK;
 }
+VkRenderPassBeginInfo Vulkan::getRenderPassBeginInfoEx() {
+	return RENDER_PASS_BEGIN_INFO_VK;
+}
 
 VkCommandBufferBeginInfo* Vulkan::getCommandBufferBeginInfo()  {
 	return &COMMAND_BUFFER_BEGIN_INFO_VK;
 }
 
-VkSemaphore Vulkan::getSemaphoreAvailable() const {
-	return SEMAPHORE_IMAGE_AVAILABLE_VK;
+VkSemaphore Vulkan::getSemaphoreWait() const {
+	return SEMAPHORE_WAIT_VK;
 }
 
 VkPresentInfoKHR* Vulkan::getPresentInfo() {
 	return &PRESENT_INFO_VK;
 }
 
-VkSwapchainKHR Vulkan::getSwapchain() const {
+VkSwapchainKHR Vulkan::getSwapchain() {
 	return SWAPCHAIN_VK;
 }
 
-VkSemaphore Vulkan::getSemaphoreImageAvailable() const {
-	return SEMAPHORE_IMAGE_AVAILABLE_VK;
+VkSemaphore Vulkan::getSemaphoreSignal()  {
+	return SEMAPHORE_SIGNAL_VK;
 }
 
 uint32_t *Vulkan::getImageIndex() {
 	return &IMAGE_INDEX_VK;
 }
 
-VkFramebuffer Vulkan::getSwapchainFramebuffer(int i) const {
+VkFramebuffer Vulkan::getSwapchainFramebuffer(int i) {
 	return SWAPCHAIN_FRAMEBUFFER_VK[i];
 }
 
@@ -136,13 +139,16 @@ VkFence *Vulkan::getFenceRenderingFinished()
 {
 	return &FENCE_RENDERING_FINISHED_VK;
 }
-
+VkFence Vulkan::getFenceRenderingFinishedEx()
+{
+	return FENCE_RENDERING_FINISHED_VK;
+}
 bool Vulkan::cleanup()
 {
 	return true;
 }
 
-bool Vulkan::isDeviceSuitable(VkPhysicalDevice device) const
+bool Vulkan::isDeviceSuitable(VkPhysicalDevice device)
 {
 	VkPhysicalDeviceProperties deviceProperties;
 	vkGetPhysicalDeviceProperties(device, &deviceProperties);
@@ -153,7 +159,7 @@ bool Vulkan::isDeviceSuitable(VkPhysicalDevice device) const
 	return deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.geometryShader;
 }
 
-VkInstance Vulkan::getInstance() const
+VkInstance Vulkan::getInstance()
 {
 	return INSTANCE_VK;
 }
@@ -211,8 +217,6 @@ VkImageViewCreateInfo Vulkan::imageViewCreateInfo(VkFormat format, VkImage image
 	return info;
 }
 
-
-
 VkPipelineLayout Vulkan::getPipelineLayout(Mesh & MESH)
 {
 	// Create a descriptor set layout for the uniform values
@@ -262,6 +266,25 @@ VkPipelineLayout Vulkan::getPipelineLayout(Mesh & MESH)
 
 	return pipelineLayout;
 }
+
+
+VkPipelineDepthStencilStateCreateInfo Vulkan::depthStencilCreateInfo(bool bDepthTest, bool bDepthWrite, VkCompareOp compareOp)
+{
+	VkPipelineDepthStencilStateCreateInfo info = {};
+	info.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	info.pNext = nullptr;
+
+	info.depthTestEnable = bDepthTest ? VK_TRUE : VK_FALSE;
+	info.depthWriteEnable = bDepthWrite ? VK_TRUE : VK_FALSE;
+	info.depthCompareOp = bDepthTest ? compareOp : VK_COMPARE_OP_ALWAYS;
+	info.depthBoundsTestEnable = VK_FALSE;
+	info.minDepthBounds = 0.0f; // Optional
+	info.maxDepthBounds = 1.0f; // Optional
+	info.stencilTestEnable = VK_FALSE;
+
+	return info;
+}
+
 
 
 void Vulkan::initPipeline(string name,string sShaderVertex,string sShaderFragment,Mesh & MESH)
@@ -319,11 +342,16 @@ void Vulkan::initPipeline(string name,string sShaderVertex,string sShaderFragmen
 
 	// Depth-stencil configuration
 	VkPipelineDepthStencilStateCreateInfo depthStencil = {};
+
 	depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	depthStencil.pNext = nullptr;
+
 	depthStencil.depthTestEnable = VK_TRUE;
 	depthStencil.depthWriteEnable = VK_TRUE;
-	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+	depthStencil.depthCompareOp = VK_COMPARE_OP_ALWAYS;
 	depthStencil.depthBoundsTestEnable = VK_FALSE;
+	depthStencil.minDepthBounds = 0.0f; // Optional
+	depthStencil.maxDepthBounds = 1.0f; // Optional
 	depthStencil.stencilTestEnable = VK_FALSE;
 
 	// Color blending configuration
@@ -402,7 +430,7 @@ bool Vulkan::initVulkan()
 	std::vector<VkPhysicalDevice> devices(deviceCount);
 	vkEnumeratePhysicalDevices(INSTANCE_VK, &deviceCount, devices.data());
 
-	for (const auto& device : devices)
+	for  (const auto& device : devices)
 	{
 		if (isDeviceSuitable(device))
 		{
@@ -663,6 +691,57 @@ bool Vulkan::initVulkan()
 			return result;
 		}
 	}
+
+	//depth image size will match the window
+	VkExtent3D depthImageExtent = {
+		WINDOW->getWidth(),
+		WINDOW->getHeight(),
+		1
+	};
+
+	_depthFormat = VK_FORMAT_D32_SFLOAT;
+
+	VkImageCreateInfo dimg_info = imageCreateInfo(_depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthImageExtent);
+
+	VmaAllocationCreateInfo dimg_allocinfo = {};
+	dimg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+	dimg_allocinfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	
+
+	ALLOCATOR_INFO.physicalDevice = PHYSICAL_DEVICE_VK;
+	ALLOCATOR_INFO.device = LOGICAL_DEVICE_VK;
+	ALLOCATOR_INFO.instance = INSTANCE_VK;
+	vmaCreateAllocator(&ALLOCATOR_INFO, &ALLOCATOR);
+
+	cout << endl << ALLOCATOR << " " << &dimg_info << " " << &dimg_allocinfo << " " << &_depthImage._image << " " << &_depthImage._allocation << " ";
+
+	vmaCreateImage(ALLOCATOR, &dimg_info, &dimg_allocinfo, &_depthImage._image, &_depthImage._allocation, nullptr);
+
+	VkImageViewCreateInfo dview_info = imageViewCreateInfo(_depthFormat, _depthImage._image, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+	vkCreateImageView(LOGICAL_DEVICE_VK, &dview_info, nullptr, &_depthImageView);
+	_mainDeletionQueue.push_function([=]() {
+		vkDestroyImageView(LOGICAL_DEVICE_VK, _depthImageView, nullptr);
+		vmaDestroyImage(ALLOCATOR, _depthImage._image, _depthImage._allocation);
+		});
+
+
+	VkAttachmentDescription depth_attachment = {};
+	// Depth attachment
+	depth_attachment.format = _depthFormat;
+	depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference depth_attachment_ref = {};
+	depth_attachment_ref.attachment = 1;
+	depth_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
 	VkAttachmentDescription colorAttachment = {};
 	colorAttachment.format = surfaceFormat.format;
 	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -681,13 +760,39 @@ bool Vulkan::initVulkan()
 	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	subpass.colorAttachmentCount = 1;
 	subpass.pColorAttachments = &colorAttachmentRef;
+	//hook the depth attachment into the subpass
+	subpass.pDepthStencilAttachment = &depth_attachment_ref;
 
+	//array of 2 attachments, one for the color, and other for depth
+	VkAttachmentDescription attachments[2] = { colorAttachment,depth_attachment };
+
+	VkSubpassDependency dependency = {};
+	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependency.dstSubpass = 0;
+	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.srcAccessMask = 0;
+	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+	VkSubpassDependency depth_dependency = {};
+	depth_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	depth_dependency.dstSubpass = 0;
+	depth_dependency.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	depth_dependency.srcAccessMask = 0;
+	depth_dependency.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	depth_dependency.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+	VkSubpassDependency dependencies[2] = { dependency, depth_dependency };
 
 	RENDER_PASS_INFO_VK.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	RENDER_PASS_INFO_VK.attachmentCount = 1;
-	RENDER_PASS_INFO_VK.pAttachments = &colorAttachment;
+	RENDER_PASS_INFO_VK.attachmentCount = 2;
+	RENDER_PASS_INFO_VK.pAttachments = attachments;
 	RENDER_PASS_INFO_VK.subpassCount = 1;
 	RENDER_PASS_INFO_VK.pSubpasses = &subpass;
+	RENDER_PASS_INFO_VK.dependencyCount = 2;
+	RENDER_PASS_INFO_VK.pDependencies = &dependencies[0];
+
+
 
 	result = vkCreateRenderPass(LOGICAL_DEVICE_VK, &RENDER_PASS_INFO_VK, nullptr, &RENDER_PASS_VK);
 
@@ -704,19 +809,20 @@ bool Vulkan::initVulkan()
 	for (uint32_t i = 0; i < swapchainImageCount; i++)
 	{
 
-		VkImageView attachments[] = { swapchainImageViews[i] };
+		VkImageView attachments[2] = { swapchainImageViews[i],_depthImageView };
 
 		VkFramebufferCreateInfo framebufferCreateInfo = {};
 		framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		framebufferCreateInfo.renderPass = RENDER_PASS_VK;
-		framebufferCreateInfo.attachmentCount = 1;
+		framebufferCreateInfo.attachmentCount = 2;
 		framebufferCreateInfo.pAttachments = attachments;
 		framebufferCreateInfo.width = WINDOW->getWidth();
 		framebufferCreateInfo.height = WINDOW->getHeight();
 		framebufferCreateInfo.layers = 1;
 
 		result = vkCreateFramebuffer(LOGICAL_DEVICE_VK, &framebufferCreateInfo, nullptr, &SWAPCHAIN_FRAMEBUFFER_VK[i]);
-		if (result != VK_SUCCESS) {
+		if (result != VK_SUCCESS) 
+		{
 			// Handle framebuffer creation error
 			for (uint32_t j = 0; j < i; j++) {
 				//vkDestroyFramebuffer(LOGICAL_DEVICE_VK, SWAPCHAIN_FRAMEBUFFER_VK[j], nullptr);
@@ -896,11 +1002,13 @@ bool Vulkan::initVulkan()
 
 	VkSemaphoreCreateInfo semaphoreCreateInfo = {};
 	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-	if (vkCreateSemaphore(LOGICAL_DEVICE_VK, &semaphoreCreateInfo, nullptr, &SEMAPHORE_IMAGE_AVAILABLE_VK) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to create semaphore for image availability!");
-	}
 
-	RESULT_VK = vkCreateSemaphore(LOGICAL_DEVICE_VK, &semaphoreCreateInfo, nullptr, &SEMAPHORE_RENDERING_FINISHED_VK);
+	RESULT_VK = vkCreateSemaphore(LOGICAL_DEVICE_VK, &semaphoreCreateInfo, nullptr, &SEMAPHORE_WAIT_VK);
+	if (RESULT_VK != VK_SUCCESS) {
+		// Handle semaphore creation error
+		cout << "Failed to create semaphore for rendering" << endl;
+	}
+	RESULT_VK = vkCreateSemaphore(LOGICAL_DEVICE_VK, &semaphoreCreateInfo, nullptr, &SEMAPHORE_SIGNAL_VK);
 	if (RESULT_VK != VK_SUCCESS) {
 		// Handle semaphore creation error
 		cout << "Failed to create semaphore for rendering" << endl;
@@ -919,9 +1027,11 @@ bool Vulkan::initVulkan()
 		cout << "Failed to create fence for rendering" << endl;
 	}
 
+	vkResetFences(LOGICAL_DEVICE_VK, 1, &FENCE_RENDERING_FINISHED_VK);
+
 	PRESENT_INFO_VK.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	PRESENT_INFO_VK.waitSemaphoreCount = 1;
-	PRESENT_INFO_VK.pWaitSemaphores = &SEMAPHORE_IMAGE_AVAILABLE_VK;
+	PRESENT_INFO_VK.pWaitSemaphores = &SEMAPHORE_WAIT_VK;
 	PRESENT_INFO_VK.swapchainCount = 1;
 	PRESENT_INFO_VK.pSwapchains = &SWAPCHAIN_VK;
 	PRESENT_INFO_VK.pImageIndices = &IMAGE_INDEX_VK;
@@ -942,20 +1052,13 @@ bool Vulkan::initVulkan()
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
 	SUBMIT_INFO_VK.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	SUBMIT_INFO_VK.waitSemaphoreCount = 1;
-	SUBMIT_INFO_VK.pWaitSemaphores = &SEMAPHORE_IMAGE_AVAILABLE_VK;
-	SUBMIT_INFO_VK.pWaitDstStageMask = waitStages;
 	SUBMIT_INFO_VK.commandBufferCount = 1;
+	SUBMIT_INFO_VK.pWaitDstStageMask = waitStages;
 	SUBMIT_INFO_VK.pCommandBuffers = &COMMAND_BUFFER_VK;
-	SUBMIT_INFO_VK.signalSemaphoreCount = 1;
-	SUBMIT_INFO_VK.pSignalSemaphores = &SEMAPHORE_IMAGE_AVAILABLE_VK;
-
-	//VMA
-
-	ALLOCATOR_INFO.physicalDevice = PHYSICAL_DEVICE_VK;
-	ALLOCATOR_INFO.device = LOGICAL_DEVICE_VK;
-	ALLOCATOR_INFO.instance = INSTANCE_VK;
-	vmaCreateAllocator(&ALLOCATOR_INFO, &ALLOCATOR);
+	//SUBMIT_INFO_VK.waitSemaphoreCount = 1;
+	//SUBMIT_INFO_VK.pWaitSemaphores = &SEMAPHORE_WAIT_VK;
+	//SUBMIT_INFO_VK.signalSemaphoreCount = 1;
+	//SUBMIT_INFO_VK.pSignalSemaphores = &SEMAPHORE_SIGNAL_VK;
 
 }
 

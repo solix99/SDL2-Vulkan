@@ -57,8 +57,12 @@ Mesh::Mesh(const char* filename)
 }
 
 
-void Mesh::meshInit(VkPhysicalDevice PHYSICAL_DEVICE_P, VkDevice LOGICAL_DEVICE_P, VkInstance INSTACE_P, VkCommandPool COMMAND_POOL_P, VkCommandBuffer COMMAND_BUFFER_P, VkQueue GRAPHICS_QUEUE_P)
+void Mesh::meshInit(VkPhysicalDevice PHYSICAL_DEVICE_P, VkDevice LOGICAL_DEVICE_P, VkInstance INSTACE_P, VkCommandPool COMMAND_POOL_P, VkCommandBuffer COMMAND_BUFFER_P, VkQueue GRAPHICS_QUEUE_P,VmaAllocator allocator, VmaAllocatorCreateInfo ALLOCATOR_INFO)
 {
+
+    ALLOCATOR = allocator;
+    VmaAllocatorInfo = ALLOCATOR_INFO;
+
     PHYSICAL_DEVICE = PHYSICAL_DEVICE_P;
     LOGICAL_DEVICE = LOGICAL_DEVICE_P;
     INSTANCE = INSTACE_P;
@@ -66,7 +70,7 @@ void Mesh::meshInit(VkPhysicalDevice PHYSICAL_DEVICE_P, VkDevice LOGICAL_DEVICE_
     COMMAND_POOL = COMMAND_POOL_P;
     COMMAND_BUFFER = COMMAND_BUFFER_P;
 
-    const char * filename = "assets/Suzanne.obj";
+    const char * filename = "assets/cube.obj";
 
     tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;
@@ -78,43 +82,42 @@ void Mesh::meshInit(VkPhysicalDevice PHYSICAL_DEVICE_P, VkDevice LOGICAL_DEVICE_
     if (!err.empty()) std::cerr << err << std::endl;
     if (!ret) exit(1);
 
+
     for (const auto& shape : shapes)
     {
         for (const auto& index : shape.mesh.indices)
         {
             Vertex v = {};
-            if (index.vertex_index >= 0 && index.vertex_index < attrib.vertices.size() / 3) {
+            if (index.vertex_index >= 0 && index.vertex_index < attrib.vertices.size() / 3)
+            {
                 v.position = glm::vec3(attrib.vertices[3 * index.vertex_index + 0],
                     attrib.vertices[3 * index.vertex_index + 1],
                     attrib.vertices[3 * index.vertex_index + 2]);
             }
-            if (index.normal_index >= 0 && index.normal_index < attrib.normals.size() / 3) {
+            if (index.normal_index >= 0 && index.normal_index < attrib.normals.size() / 3)
+            {
                 v.normal = glm::vec3(attrib.normals[3 * index.normal_index + 0],
                     attrib.normals[3 * index.normal_index + 1],
                     attrib.normals[3 * index.normal_index + 2]);
             }
-            if (index.texcoord_index >= 0 && index.texcoord_index < attrib.texcoords.size() / 2) {
+            if (index.texcoord_index >= 0 && index.texcoord_index < attrib.texcoords.size() / 2)
+            {
                 v.texcoord = glm::vec2(attrib.texcoords[2 * index.texcoord_index + 0],
-                    attrib.texcoords[2 * index.texcoord_index + 1]);
+                    1.0f - attrib.texcoords[2 * index.texcoord_index + 1]); // flip texcoord y-axis to match OpenGL convention
             }
             v.color = glm::vec3(1.0f, 1.0f, 1.0f);
             vertices.push_back(v);
         }
     }
+
     std::cout << "Loaded " << filename << " with " << vertices.size() << " vertices" << std::endl;
 
    for (int i = 0; i < vertices.size(); i++)
    {
-       if(i%2==0)
+       if(i%5==0)
        vertices[i].color = { 0.f, 1.f, 0.0f }; //pure green
    }
 
-
-    VmaAllocatorCreateInfo allocatorInfo = {};
-    allocatorInfo.physicalDevice = PHYSICAL_DEVICE;
-    allocatorInfo.device = LOGICAL_DEVICE;
-    allocatorInfo.instance = INSTANCE;
-    vmaCreateAllocator(&allocatorInfo, &ALLOCATOR);
   
     uploadMesh();
 }
