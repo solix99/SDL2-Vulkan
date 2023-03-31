@@ -287,6 +287,10 @@ VkPipelineDepthStencilStateCreateInfo Vulkan::depthStencilCreateInfo(bool bDepth
 
 
 
+VkDescriptorSet *Vulkan::getDescriptorSet()
+{
+	return &depthDescriptorSet;
+}
 void Vulkan::initPipeline(string name,string sShaderVertex,string sShaderFragment,Mesh & MESH)
 {
 	PIPE.NAME.push_back(name);
@@ -348,7 +352,7 @@ void Vulkan::initPipeline(string name,string sShaderVertex,string sShaderFragmen
 
 	depthStencil.depthTestEnable = VK_TRUE;
 	depthStencil.depthWriteEnable = VK_TRUE;
-	depthStencil.depthCompareOp = VK_COMPARE_OP_ALWAYS;
+	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
 	depthStencil.depthBoundsTestEnable = VK_FALSE;
 	depthStencil.minDepthBounds = 0.0f; // Optional
 	depthStencil.maxDepthBounds = 1.0f; // Optional
@@ -528,23 +532,8 @@ bool Vulkan::initVulkan()
 
 	// Choose a surface format
 	VkSurfaceFormatKHR surfaceFormat;
-	if (formatCount == 1 && formats[0].format == VK_FORMAT_UNDEFINED)
-	{
-		// If the surface has no preferred format, choose a default one
-		surfaceFormat = { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-	}
-	else
-	{
-		// Otherwise, select the first available format that meets our requirements
-		for (const auto& format : formats)
-		{
-			if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
-			{
-				surfaceFormat = format;
-				break;
-			}
-		}
-	}
+
+	surfaceFormat = { VK_FORMAT_D32_SFLOAT };
 
 	// Query available present modes
 	uint32_t presentModeCount;
@@ -596,12 +585,12 @@ bool Vulkan::initVulkan()
 	vkGetPhysicalDeviceSurfaceFormatsKHR(PHYSICAL_DEVICE_VK, SURFACE_VK, &surfaceFormatCount, surfaceFormats.data());
 
 	if (surfaceFormats.size() == 1 && surfaceFormats[0].format == VK_FORMAT_UNDEFINED) {
-		surfaceFormat.format = VK_FORMAT_B8G8R8A8_UNORM;
+		surfaceFormat.format = VK_FORMAT_D32_SFLOAT;
 		surfaceFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 	}
 	else {
 		for (const auto& availableFormat : surfaceFormats) {
-			if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM &&
+			if (availableFormat.format == VK_FORMAT_D32_SFLOAT &&
 				availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
 				surfaceFormat = availableFormat;
 				break;
@@ -664,15 +653,17 @@ bool Vulkan::initVulkan()
 		return result;
 	}
 
-	// Create an image view for each swapchain image
-	std::vector<VkImageView> swapchainImageViews(swapchainImageCount);
-	for (uint32_t i = 0; i < swapchainImageCount; i++) {
+	vector<VkImageView> swapchainImageViews(swapchainImageCount);
+
+	for (uint32_t i = 0; i < swapchainImageCount; i++) 
+	{
 		VkImageViewCreateInfo imageViewCreateInfo = {};
 		imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		imageViewCreateInfo.image = swapchainImages[i];
 		imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 		imageViewCreateInfo.format = surfaceFormat.format;
-		imageViewCreateInfo.components = {
+		imageViewCreateInfo.components = 
+		{
 			VK_COMPONENT_SWIZZLE_IDENTITY, // R
 			VK_COMPONENT_SWIZZLE_IDENTITY, // G
 			VK_COMPONENT_SWIZZLE_IDENTITY, // B
@@ -683,6 +674,7 @@ bool Vulkan::initVulkan()
 		imageViewCreateInfo.subresourceRange.levelCount = 1;
 		imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
 		imageViewCreateInfo.subresourceRange.layerCount = 1;
+		imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
 		VkResult result = vkCreateImageView(LOGICAL_DEVICE_VK, &imageViewCreateInfo, nullptr, &swapchainImageViews[i]);
 		if (result != VK_SUCCESS) {
@@ -707,7 +699,6 @@ bool Vulkan::initVulkan()
 	dimg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 	dimg_allocinfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-	
 
 	ALLOCATOR_INFO.physicalDevice = PHYSICAL_DEVICE_VK;
 	ALLOCATOR_INFO.device = LOGICAL_DEVICE_VK;
@@ -729,6 +720,7 @@ bool Vulkan::initVulkan()
 
 	VkAttachmentDescription depth_attachment = {};
 	// Depth attachment
+	depth_attachment.flags = 0;
 	depth_attachment.format = _depthFormat;
 	depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -763,6 +755,7 @@ bool Vulkan::initVulkan()
 	//hook the depth attachment into the subpass
 	subpass.pDepthStencilAttachment = &depth_attachment_ref;
 
+
 	//array of 2 attachments, one for the color, and other for depth
 	VkAttachmentDescription attachments[2] = { colorAttachment,depth_attachment };
 
@@ -777,22 +770,20 @@ bool Vulkan::initVulkan()
 	VkSubpassDependency depth_dependency = {};
 	depth_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 	depth_dependency.dstSubpass = 0;
-	depth_dependency.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	depth_dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 	depth_dependency.srcAccessMask = 0;
-	depth_dependency.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-	depth_dependency.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	depth_dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	depth_dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
 	VkSubpassDependency dependencies[2] = { dependency, depth_dependency };
 
 	RENDER_PASS_INFO_VK.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	RENDER_PASS_INFO_VK.attachmentCount = 2;
-	RENDER_PASS_INFO_VK.pAttachments = attachments;
+	RENDER_PASS_INFO_VK.pAttachments = &attachments[0];
 	RENDER_PASS_INFO_VK.subpassCount = 1;
 	RENDER_PASS_INFO_VK.pSubpasses = &subpass;
 	RENDER_PASS_INFO_VK.dependencyCount = 2;
 	RENDER_PASS_INFO_VK.pDependencies = &dependencies[0];
-
-
 
 	result = vkCreateRenderPass(LOGICAL_DEVICE_VK, &RENDER_PASS_INFO_VK, nullptr, &RENDER_PASS_VK);
 
@@ -821,163 +812,9 @@ bool Vulkan::initVulkan()
 		framebufferCreateInfo.layers = 1;
 
 		result = vkCreateFramebuffer(LOGICAL_DEVICE_VK, &framebufferCreateInfo, nullptr, &SWAPCHAIN_FRAMEBUFFER_VK[i]);
-		if (result != VK_SUCCESS) 
-		{
-			// Handle framebuffer creation error
-			for (uint32_t j = 0; j < i; j++) {
-				//vkDestroyFramebuffer(LOGICAL_DEVICE_VK, SWAPCHAIN_FRAMEBUFFER_VK[j], nullptr);
-			}
-			vkDestroyRenderPass(LOGICAL_DEVICE_VK, RENDER_PASS_VK, nullptr);
-			vkDestroySwapchainKHR(LOGICAL_DEVICE_VK, SWAPCHAIN_VK, nullptr);
-			return result;
-		}
 	}
-
-	// Create a descriptor set layout for the uniform values
-	VkDescriptorSetLayoutBinding layoutBinding = {};
-	layoutBinding.binding = 1;
-	layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	layoutBinding.descriptorCount = 1;
-	layoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-	layoutBinding.pImmutableSamplers = nullptr;
-
-	VkDescriptorSetLayoutCreateInfo layoutCreateInfo = {};
-	layoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	layoutCreateInfo.bindingCount = 1;
-	layoutCreateInfo.pBindings = &layoutBinding;
-
-	VkDescriptorSetLayout descriptorSetLayout;
-	result = vkCreateDescriptorSetLayout(LOGICAL_DEVICE_VK, &layoutCreateInfo, nullptr, &descriptorSetLayout);
-	if (result != VK_SUCCESS) {
-		// Handle descriptor set layout creation error
-		vkDestroySwapchainKHR(LOGICAL_DEVICE_VK, SWAPCHAIN_VK, nullptr);
-		return result;
-	}
-
-	// Create the pipeline layout using the descriptor set layout
-	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {};
-	pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutCreateInfo.setLayoutCount = 1;
-	pipelineLayoutCreateInfo.pSetLayouts = &descriptorSetLayout;
-
-	VkPipelineLayout pipelineLayout;
-	result = vkCreatePipelineLayout(LOGICAL_DEVICE_VK, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout);
-	if (result != VK_SUCCESS) {
-		// Handle pipeline layout creation error
-		vkDestroyDescriptorSetLayout(LOGICAL_DEVICE_VK, descriptorSetLayout, nullptr);
-		vkDestroySwapchainKHR(LOGICAL_DEVICE_VK, SWAPCHAIN_VK, nullptr);
-		return result;
-	}
-
-
-	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
-	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = 0;
-	vertexInputInfo.pVertexBindingDescriptions =  nullptr;
-	vertexInputInfo.vertexAttributeDescriptionCount = 0;
-	vertexInputInfo.pVertexAttributeDescriptions =  nullptr;
-	
-	VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
-	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-	inputAssembly.primitiveRestartEnable = VK_FALSE;
-
-	VkViewport viewport = {};
-	viewport.x = 0.0f;
-	viewport.y = 0.0f;
-	viewport.width = (float)WINDOW->getWidth();
-	viewport.height = (float)WINDOW->getHeight();
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-
-	VkRect2D scissor = {};
-	scissor.offset = { 0, 0 };
-	scissor.extent = surfaceCapabilities.currentExtent;
-
-	VkPipelineViewportStateCreateInfo viewportState = {};
-	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-	viewportState.viewportCount = 1;
-	viewportState.pViewports = &viewport;
-	viewportState.scissorCount = 1;
-	viewportState.pScissors = &scissor;
-
-	VkPipelineRasterizationStateCreateInfo rasterizer = {};
-	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-	rasterizer.depthClampEnable = VK_FALSE;
-	rasterizer.rasterizerDiscardEnable = VK_FALSE;
-	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-	rasterizer.lineWidth = 1.0f;
-	//rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-	rasterizer.depthBiasEnable = VK_FALSE;
-
-	// Multisampling configuration
-	VkPipelineMultisampleStateCreateInfo multisampling = {};
-	multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-	multisampling.sampleShadingEnable = VK_FALSE;
-	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-	// Depth-stencil configuration
-	VkPipelineDepthStencilStateCreateInfo depthStencil = {};
-	depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-	depthStencil.depthTestEnable = VK_TRUE;
-	depthStencil.depthWriteEnable = VK_TRUE;
-	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
-	depthStencil.depthBoundsTestEnable = VK_FALSE;
-	depthStencil.stencilTestEnable = VK_FALSE;
-
-	// Color blending configuration
-	VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
-	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	colorBlendAttachment.blendEnable = VK_FALSE;
-
-	VkPipelineColorBlendStateCreateInfo colorBlending = {};
-	colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	colorBlending.logicOpEnable = VK_FALSE;
-	colorBlending.logicOp = VK_LOGIC_OP_COPY;
-	colorBlending.attachmentCount = 1;
-	colorBlending.pAttachments = &colorBlendAttachment;
-	colorBlending.blendConstants[0] = 0.0f;
-	colorBlending.blendConstants[1] = 0.0f;
-	colorBlending.blendConstants[2] = 0.0f;
-	colorBlending.blendConstants[3] = 0.0f;
-
-	VERT_SHADER_MODULE = Shader::createShaderModule(LOGICAL_DEVICE_VK, Shader::readFile("shaders/tri_mesh.spv"));
-	FRAG_SHADER_MODULE = Shader::createShaderModule(LOGICAL_DEVICE_VK, Shader::readFile("shaders/colored_triangle_frag.spv"));
-
-	// Define shader stage create info structures
-	VkPipelineShaderStageCreateInfo vertShaderStageInfo = {};
-	vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	vertShaderStageInfo.module = VERT_SHADER_MODULE;
-	vertShaderStageInfo.pName = "main";
-
-	VkPipelineShaderStageCreateInfo fragShaderStageInfo = {};
-	fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	fragShaderStageInfo.module = FRAG_SHADER_MODULE;
-	fragShaderStageInfo.pName = "main";
 
 	// Create array of shader stage create info structures
-
-	VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
-
-	VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
-
-	pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	pipelineCreateInfo.stageCount = 2;
-	pipelineCreateInfo.pStages = shaderStages;
-	pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
-	pipelineCreateInfo.pInputAssemblyState = &inputAssembly;
-	pipelineCreateInfo.pViewportState = &viewportState;
-	pipelineCreateInfo.pRasterizationState = &rasterizer;
-	pipelineCreateInfo.pMultisampleState = &multisampling;
-	pipelineCreateInfo.pDepthStencilState = &depthStencil;
-	pipelineCreateInfo.pColorBlendState = &colorBlending;
-	pipelineCreateInfo.layout = pipelineLayout;
-	pipelineCreateInfo.renderPass = RENDER_PASS_VK;
-	pipelineCreateInfo.subpass = 0;
-	pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 
 	VkCommandPoolCreateInfo poolCreateInfo = {};
 	poolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -1041,13 +878,27 @@ bool Vulkan::initVulkan()
 	COMMAND_BUFFER_BEGIN_INFO_VK.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	COMMAND_BUFFER_BEGIN_INFO_VK.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
+	VkClearValue clearValues[2];
+	clearValues[0] = { 0.0f, 0.0f, 0.0f, 1.0f }; // or whatever your first clear value is
+	clearValues[1] = { 0.0f, 0.0f, 0.0f, 1.0f }; // or whatever your second clear value is
+	
+
+	VkClearColorValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f }; // Clear to black with full alpha
+	VkClearValue clearValue = {};
+	clearValue.depthStencil = { 1.0f, 0 }; // Depth value of 1.0, stencil value of 0
+	clearValue.color = clearColor;
+
+
+	VkClearDepthStencilValue depthValue = { 1.0f, 0 };
+
 
 	RENDER_PASS_BEGIN_INFO_VK.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	RENDER_PASS_BEGIN_INFO_VK.renderPass = RENDER_PASS_VK;
-	RENDER_PASS_BEGIN_INFO_VK.renderArea.offset = { 0, 0 };
+	RENDER_PASS_BEGIN_INFO_VK.renderArea.offset = { 0,0 };
 	RENDER_PASS_BEGIN_INFO_VK.renderArea.extent = SWAPCHAIN_EXTENT;
-	RENDER_PASS_BEGIN_INFO_VK.clearValueCount = 1;
-	RENDER_PASS_BEGIN_INFO_VK.pClearValues = &WINDOW_RENDER_COLOR_VK;
+	RENDER_PASS_BEGIN_INFO_VK.clearValueCount = 2;
+	RENDER_PASS_BEGIN_INFO_VK.pClearValues = &clearValue;
+	RENDER_PASS_BEGIN_INFO_VK.framebuffer = SWAPCHAIN_FRAMEBUFFER_VK[0];
 
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
@@ -1059,6 +910,88 @@ bool Vulkan::initVulkan()
 	//SUBMIT_INFO_VK.pWaitSemaphores = &SEMAPHORE_WAIT_VK;
 	//SUBMIT_INFO_VK.signalSemaphoreCount = 1;
 	//SUBMIT_INFO_VK.pSignalSemaphores = &SEMAPHORE_SIGNAL_VK;
+
+
+	// Create the descriptor set layout
+	VkDescriptorSetLayoutBinding depthBinding = {};
+	depthBinding.binding = 0;
+	depthBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	depthBinding.descriptorCount = 1;
+	depthBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	depthBinding.pImmutableSamplers = nullptr;
+
+	VkDescriptorSetLayoutCreateInfo layoutInfo = {};
+	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	layoutInfo.bindingCount = 1;
+	layoutInfo.pBindings = &depthBinding;
+
+	VkDescriptorSetLayout depthLayout;
+	vkCreateDescriptorSetLayout(LOGICAL_DEVICE_VK, &layoutInfo, nullptr, &depthLayout);
+
+	// Create the descriptor pool
+	VkDescriptorPoolSize depthPoolSize = {};
+	depthPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	depthPoolSize.descriptorCount = 1;
+
+	VkDescriptorPoolCreateInfo depthPoolInfo = {};
+	depthPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	depthPoolInfo.maxSets = 1;
+	depthPoolInfo.poolSizeCount = 1;
+	depthPoolInfo.pPoolSizes = &depthPoolSize;
+
+	VkDescriptorPool depthPool;
+	vkCreateDescriptorPool(LOGICAL_DEVICE_VK, &depthPoolInfo, nullptr, &depthPool);
+
+	// Allocate the descriptor set
+	VkDescriptorSetAllocateInfo depthAllocateInfo = {};
+	depthAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	depthAllocateInfo.descriptorPool = depthPool;
+	depthAllocateInfo.descriptorSetCount = 1;
+	depthAllocateInfo.pSetLayouts = &depthLayout;
+
+	VkDescriptorSet depthDescriptorSet;
+	vkAllocateDescriptorSets(LOGICAL_DEVICE_VK, &depthAllocateInfo, &depthDescriptorSet);
+
+
+	// Set up the sampler creation info struct
+	VkSamplerCreateInfo samplerInfo = {};
+	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerInfo.magFilter = VK_FILTER_LINEAR;
+	samplerInfo.minFilter = VK_FILTER_LINEAR;
+	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.anisotropyEnable = VK_FALSE;
+	samplerInfo.maxAnisotropy = 1.0f;
+	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	samplerInfo.unnormalizedCoordinates = VK_FALSE;
+	samplerInfo.compareEnable = VK_FALSE;
+	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	samplerInfo.minLod = 0;
+	samplerInfo.maxLod = 0;
+	samplerInfo.mipLodBias = 0;
+
+	// Create the sampler object
+	VkSampler depthSampler;
+	vkCreateSampler(LOGICAL_DEVICE_VK, &samplerInfo, nullptr, &depthSampler);
+
+	// Populate the descriptor set with information
+	VkDescriptorImageInfo depthImageInfo = {};
+	depthImageInfo.sampler = depthSampler;
+	depthImageInfo.imageView = _depthImageView;
+	depthImageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkWriteDescriptorSet depthWrite = {};
+	depthWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	depthWrite.dstSet = depthDescriptorSet;
+	depthWrite.dstBinding = 0;
+	depthWrite.dstArrayElement = 0;
+	depthWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	depthWrite.descriptorCount = 1;
+	depthWrite.pImageInfo = &depthImageInfo;
+
+	vkUpdateDescriptorSets(LOGICAL_DEVICE_VK, 1, &depthWrite, 0, nullptr);
 
 }
 

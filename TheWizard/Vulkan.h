@@ -83,6 +83,8 @@ public:
 	VkPipelineLayout getPipelineLayout(Mesh & MESH);
 	VkRenderPassBeginInfo getRenderPassBeginInfoEx();
 
+	VkImage getSwapchainImage();
+
 	VkImageCreateInfo imageCreateInfo(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent);
 	VkImageViewCreateInfo imageViewCreateInfo(VkFormat format, VkImage image, VkImageAspectFlags aspectFlags);
 	VkPipelineDepthStencilStateCreateInfo depthStencilCreateInfo(bool bDepthTest, bool bDepthWrite, VkCompareOp compareOp);
@@ -94,7 +96,7 @@ public:
 
 	VmaAllocator ALLOCATOR;
 	VmaAllocatorCreateInfo ALLOCATOR_INFO = {};
-
+	VkDescriptorSet *getDescriptorSet();
 
 
 	Mesh MESH;
@@ -138,6 +140,7 @@ private:
 	VkSurfaceCapabilitiesKHR surfaceCapabilities;
 	VkPipelineLayout meshPipelineLayout = VK_NULL_HANDLE;
 	VkResult result = VK_SUCCESS;
+	VkDescriptorSet depthDescriptorSet;
 
 	struct PIPELINES
 	{

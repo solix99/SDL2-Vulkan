@@ -325,7 +325,7 @@ struct engineParameters
 		}MPC;
 
 		int FRAME_NUMBER = 0;
-
+		int FRAME_NUMBER_DEPTH = 0;
 
 	}RND;
 
@@ -379,7 +379,7 @@ void handleCamera()
 	projection[1][1] *= -1;
 
 	// Calculate model matrix
-	EP.CAM.model = glm::rotate(glm::mat4{ 1.f}, glm::radians(1 * 0.4f), glm::vec3(0, 1, 0));
+	EP.CAM.model = glm::rotate(glm::mat4{ 1.f}, glm::radians(EP.RND.FRAME_NUMBER * 0.4f), glm::vec3(0, 1, 0));
 
 	// Combine view, projection, and model matrices
 	EP.CAM.mesh_matrix = projection * EP.CAM.view * EP.CAM.model;
@@ -389,9 +389,21 @@ void handleCamera()
 
 }
 
+auto startTime = std::chrono::high_resolution_clock::now();
+
+/*
 
 void vkRender()
 {
+	auto currentTime = std::chrono::high_resolution_clock::now();
+	float elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count();
+	float frequency = elapsedTime / 8.33f; // 8.33 milliseconds in 1/120th second
+
+	float flash = abs(sinf(frequency * 2.0f * glm::pi<float>())) / 2.0f + 0.5f; // Scale the output sin wave to range [0, 1]
+
+	VkClearValue clearValue = {};
+	clearValue.color = { { 0.0f, 0.0f, flash, 1.0f } };
+
 	VkDeviceSize offset = 0;
 
 	vkAcquireNextImageKHR(VK.getLogicalDevice(), VK.getSwapchain(), UINT64_MAX, VK.getSemaphoreWait(), VK_NULL_HANDLE, VK.getImageIndex());
@@ -401,10 +413,7 @@ void vkRender()
 	// begin recording commands
 	vkBeginCommandBuffer(VK.getCommandBuffer(), VK.getCommandBufferBeginInfo());
 
-	//make a clear-color from frame number. This will flash with a 120 frame period.
-	VkClearValue clearValue;
-	float flash = abs(sin(1 / 120.f));
-	clearValue.color = { { 0.0f, 0.0f, flash, 1.0f } };
+	cout << endl << flash;
 
 	//clear depth at 1
 	VkClearValue depthClear;
@@ -446,36 +455,33 @@ void vkRender()
 
 	vkQueueSubmit(VK.getGraphicsQueue(), 1, VK.getSubmitInfo(), VK_NULL_HANDLE);
 
-	vkWaitForFences(VK.getLogicalDevice(), 1, VK.getFenceRenderingFinished(), VK_TRUE, UINT64_MAX);
+	//vkWaitForFences(VK.getLogicalDevice(), 1, VK.getFenceRenderingFinished(), VK_TRUE, UINT64_MAX);
 
-	vkResetFences(VK.getLogicalDevice(), 1, VK.getFenceRenderingFinished());
+	//vkResetFences(VK.getLogicalDevice(), 1, VK.getFenceRenderingFinished());
 
 	vkQueuePresentKHR(VK.getGraphicsQueue(), VK.getPresentInfo());
 }
 
+*/
 
 
-/* 
 void vkRender()
 {
 	VkDeviceSize offset = 0;
+
+	//vkCmdClearDepthStencilImage(VK.getCommandBuffer(),VK.getSwapchain(),);
 
 	vkAcquireNextImageKHR(VK.getLogicalDevice(), VK.getSwapchain(), UINT64_MAX, VK.getSemaphoreWait(), VK_NULL_HANDLE, VK.getImageIndex());
 
 	VK.getRenderPassBeginInfo()->framebuffer = VK.getSwapchainFramebuffer(*VK.getImageIndex());
 
-	vkQueueSubmit(VK.getGraphicsQueue(), 1, VK.getSubmitInfo(), VK.getFenceRenderingFinishedEx());
-
-	vkWaitForFences(VK.getLogicalDevice(), 1, VK.getFenceRenderingFinished(), VK_TRUE, UINT64_MAX);
 
 	vkBeginCommandBuffer(VK.getCommandBuffer(), VK.getCommandBufferBeginInfo());
 
 
-	//make a clear-color from frame number. This will flash with a 120 frame period.
-	VkClearValue clearValue;
-	float flash = abs(sin(EP.RND.FRAME_NUMBER / 120.f));
-	clearValue.color = { { 0.0f, 0.0f, flash, 1.0f } };
 
+	VkClearValue clearValuesx[2];
+	clearValuesx[0] = { 0.0f, 0.0f, 0.0f, 1.0f }; // or whatever your first clear value is
 	//clear depth at 1
 	VkClearValue depthClear;
 	depthClear.depthStencil.depth = 1.f;
@@ -487,18 +493,21 @@ void vkRender()
 	//connect clear values
 	rpInfo.clearValueCount = 2;
 
-	VkClearValue clearValues[] = { clearValue, depthClear };
+	VkClearValue clearValues[] = { clearValuesx[0], depthClear };
 
 	rpInfo.pClearValues = &clearValues[0];
 
-
 	vkCmdBeginRenderPass(VK.getCommandBuffer(), &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 
+	// begin recording commands
+
+
+	//vkCmdBeginRenderPass(VK.getCommandBuffer(), VK.getRenderPassBeginInfo(), VK_SUBPASS_CONTENTS_INLINE);
+
 	vkCmdBindPipeline(VK.getCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, VK.getCurrentPipeline());
-	
+
+
 	vkCmdBindVertexBuffers(VK.getCommandBuffer(), 0, 1, VK.MESH.getVertexBuffer(), &offset);
-	
-//	cout << endl << VK.MESH_MONKEY.getVertexBuffer() << " " << VK.MESH_MONKEY.getVerticesSize();
 
 	struct MeshPushConstants {
 		glm::vec4 data;
@@ -508,22 +517,19 @@ void vkRender()
 	MeshPushConstants constants;
 	constants.render_matrix = EP.CAM.mesh_matrix;
 
-	//cout << endl << &EP.RND.MPC << " " << sizeof(VK.MESH.pushConstants) << " " << VK.MESH.getVerticesSize() << " " <<  VK.MESH.getVertexBuffer();
-
 	vkCmdPushConstants(VK.getCommandBuffer(), VK.getPipelineLayout(VK.MESH), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &constants);
 
 	vkCmdDraw(VK.getCommandBuffer(), VK.MESH.getVerticesSize(), 1, 0, 0);
-
-	vkQueuePresentKHR(VK.getGraphicsQueue(), VK.getPresentInfo());
 
 	vkCmdEndRenderPass(VK.getCommandBuffer());
 
 	vkEndCommandBuffer(VK.getCommandBuffer());
 
-	vkResetFences(VK.getLogicalDevice(), 1, VK.getFenceRenderingFinished());
+	vkQueueSubmit(VK.getGraphicsQueue(), 1, VK.getSubmitInfo(), VK_NULL_HANDLE);
 
+	vkQueuePresentKHR(VK.getGraphicsQueue(), VK.getPresentInfo());
 }
-*/
+
 
 bool isDeviceSuitable(VkPhysicalDevice device) 
 {
