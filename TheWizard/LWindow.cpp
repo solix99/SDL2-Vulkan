@@ -18,6 +18,12 @@ LWindow::LWindow(int w, int h)
 		mMouseFocus = true;
 		mKeyboardFocus = true;
 
+		// enable mouse grabbing for the window
+		SDL_SetWindowGrab(mWindow, SDL_TRUE);
+
+		// disable relative mouse mode (if enabled)
+		SDL_SetRelativeMouseMode(SDL_FALSE);
+
 		//Create renderer for window
 		mRenderer = SDL_CreateRenderer(mWindow, -1, SDL_RENDERER_ACCELERATED);
 		if (mRenderer == NULL)
@@ -49,6 +55,11 @@ LWindow::LWindow(int w, int h)
 bool LWindow::init()
 {
 	return true;
+}
+
+SDL_Window* LWindow::getTempWindow()
+{
+	return tempWindow;
 }
 
 SDL_Window* LWindow::getWindow()

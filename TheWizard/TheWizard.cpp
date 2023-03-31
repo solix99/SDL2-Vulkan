@@ -245,6 +245,16 @@ struct engineParameters
 		glm::vec3 camPos{0.f, 0.f, -10.f};
 		glm::vec3 camFront = glm::vec3(0.0f, 0.0f, 1.0f);
 		glm::vec3 camUp = glm::vec3(0.0f, 1.0f, 0.0f);
+		glm::vec3 camRight = glm::vec3(1.0f, 0.0f, 0.0f);
+		const glm::vec3 worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
+
+		float MOUSE_SENSITIVITY = 5;
+
+		float YAW = 0;
+		float PITCH = 0;
+
+		float CAMERA_MOVESPEED = 0.1f;
+
 
 	}CAM;
 
@@ -314,7 +324,6 @@ struct engineParameters
 		SDL_Rect OBJECT_RECT;
 		VkResult RESULT_VK;
 
-
 	}TEMP;
 	struct RENDERING
 	{
@@ -328,6 +337,10 @@ struct engineParameters
 
 		int FRAME_NUMBER = 0;
 		int FRAME_NUMBER_DEPTH = 0;
+
+		VkDeviceSize OFFSET = 0;
+
+
 
 	}RND;
 
@@ -357,19 +370,26 @@ void recordRenderCommands(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 void endSingleTimeCommands(VkCommandBuffer commandBuffer);
 void handleCamera();
 
-
+float nearPlane = 0.1f;
+float farPlane = 200.0f;
+float aspectRatio = 16.0f / 9.0f;
+float fov = 70.0f;
+float tanHalfFov = tan(glm::radians(fov / 2.0f));
 
 void handleCamera()
 {
+
+	glm::vec3 front;
+	front.x = cos(glm::radians(EP.CAM.YAW)) * cos(glm::radians(EP.CAM.PITCH));
+	front.y = sin(glm::radians(EP.CAM.PITCH));
+	front.z = sin(glm::radians(EP.CAM.YAW)) * cos(glm::radians(EP.CAM.PITCH));
+	EP.CAM.camFront = glm::normalize(front);
+
 	// Calculate view matrix
 	EP.CAM.view = glm::lookAt(EP.CAM.camPos, EP.CAM.camPos + EP.CAM.camFront, EP.CAM.camUp);
 
 	// Calculate projection matrix with depth information
-	float nearPlane = 0.1f;
-	float farPlane = 200.0f;
-	float aspectRatio = 16.0f / 9.0f;
-	float fov = 70.0f;
-	float tanHalfFov = tan(glm::radians(fov / 2.0f));
+
 	glm::mat4 projection = glm::mat4(0.0f);
 	projection[0][0] = 1.0f / (aspectRatio * tanHalfFov);
 	projection[1][1] = 1.0f / tanHalfFov;
@@ -381,99 +401,20 @@ void handleCamera()
 	projection[1][1] *= -1;
 
 	// Calculate model matrix
-	EP.CAM.model = glm::rotate(glm::mat4{ 1.f}, glm::radians(EP.RND.FRAME_NUMBER * 0.4f), glm::vec3(0, 1, 0));
+	EP.CAM.model = glm::rotate(glm::mat4{ 1.f}, glm::radians(0.4f), glm::vec3(0, 1, 0));
 
 	// Combine view, projection, and model matrices
 	EP.CAM.mesh_matrix = projection * EP.CAM.view * EP.CAM.model;
 
 	EP.RND.CONSTANTS.render_matrix = EP.CAM.mesh_matrix;
 
-	EP.RND.FRAME_NUMBER > 120 ? EP.RND.FRAME_NUMBER = 0 : EP.RND.FRAME_NUMBER++;
-
 }
 
-auto startTime = std::chrono::high_resolution_clock::now();
 
-/*
-
-void vkRender()
-{
-	auto currentTime = std::chrono::high_resolution_clock::now();
-	float elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count();
-	float frequency = elapsedTime / 8.33f; // 8.33 milliseconds in 1/120th second
-
-	float flash = abs(sinf(frequency * 2.0f * glm::pi<float>())) / 2.0f + 0.5f; // Scale the output sin wave to range [0, 1]
-
-	VkClearValue clearValue = {};
-	clearValue.color = { { 0.0f, 0.0f, flash, 1.0f } };
-
-	VkDeviceSize offset = 0;
-
-	vkAcquireNextImageKHR(VK.getLogicalDevice(), VK.getSwapchain(), UINT64_MAX, VK.getSemaphoreWait(), VK_NULL_HANDLE, VK.getImageIndex());
-
-	VK.getRenderPassBeginInfo()->framebuffer = VK.getSwapchainFramebuffer(*VK.getImageIndex());
-
-	// begin recording commands
-	vkBeginCommandBuffer(VK.getCommandBuffer(), VK.getCommandBufferBeginInfo());
-
-	cout << endl << flash;
-
-	//clear depth at 1
-	VkClearValue depthClear;
-	depthClear.depthStencil.depth = 1.f;
-
-	//start the main renderpass.
-	//We will use the clear color from above, and the framebuffer of the index the swapchain gave us
-	VkRenderPassBeginInfo rpInfo = VK.getRenderPassBeginInfoEx();
-
-	//connect clear values
-	rpInfo.clearValueCount = 2;
-
-	VkClearValue clearValues[] = { clearValue, depthClear };
-
-	rpInfo.pClearValues = &clearValues[0];
-
-	vkCmdBeginRenderPass(VK.getCommandBuffer(), &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-	vkCmdBindPipeline(VK.getCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, VK.getCurrentPipeline());
-
-	vkCmdBindVertexBuffers(VK.getCommandBuffer(), 0, 1, VK.MESH.getVertexBuffer(), &offset);
-
-	struct MeshPushConstants {
-		glm::vec4 data;
-		glm::mat4 render_matrix;
-	};
-
-	MeshPushConstants constants;
-	constants.render_matrix = EP.CAM.mesh_matrix;
-
-	vkCmdPushConstants(VK.getCommandBuffer(), VK.getPipelineLayout(VK.MESH), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &constants);
-
-	vkCmdDraw(VK.getCommandBuffer(), VK.MESH.getVerticesSize(), 1, 0, 0);
-
-	vkCmdEndRenderPass(VK.getCommandBuffer());
-
-	// end recording commands
-	vkEndCommandBuffer(VK.getCommandBuffer());
-
-	vkQueueSubmit(VK.getGraphicsQueue(), 1, VK.getSubmitInfo(), VK_NULL_HANDLE);
-
-	//vkWaitForFences(VK.getLogicalDevice(), 1, VK.getFenceRenderingFinished(), VK_TRUE, UINT64_MAX);
-
-	//vkResetFences(VK.getLogicalDevice(), 1, VK.getFenceRenderingFinished());
-
-	vkQueuePresentKHR(VK.getGraphicsQueue(), VK.getPresentInfo());
-}
-
-*/
 
 
 void vkRender()
 {
-	VkDeviceSize offset = 0;
-
-	//vkCmdClearDepthStencilImage(VK.getCommandBuffer(),VK.getSwapchain(),);
-
 	vkAcquireNextImageKHR(VK.getLogicalDevice(), VK.getSwapchain(), UINT64_MAX, VK.getSemaphoreWait(), VK_NULL_HANDLE, VK.getImageIndex());
 
 	VK.getRenderPassBeginInfo()->framebuffer = VK.getSwapchainFramebuffer(*VK.getImageIndex());
@@ -484,9 +425,7 @@ void vkRender()
 
 	vkCmdBindPipeline(VK.getCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, VK.getCurrentPipeline());
 
-
-	vkCmdBindVertexBuffers(VK.getCommandBuffer(), 0, 1, VK.MESH.getVertexBuffer(), &offset);
-
+	vkCmdBindVertexBuffers(VK.getCommandBuffer(), 0, 1, VK.MESH.getVertexBuffer(), &EP.RND.OFFSET);
 
 	vkCmdPushConstants(VK.getCommandBuffer(), VK.getPipelineLayout(VK.MESH), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(EP.RND.CONSTANTS), &EP.RND.CONSTANTS);
 
@@ -1567,8 +1506,52 @@ void computeFPS()
 	}
 }
 
+void handleKeyboardEvent(SDL_Event& e)
+{
+	const Uint8* currentKeyStates = SDL_GetKeyboardState(NULL);
+
+	glm::vec3 direction(
+		cos(glm::radians(EP.CAM.YAW)),
+		0,
+		sin(glm::radians(EP.CAM.YAW))
+	);
+	glm::vec3 right = glm::normalize(glm::cross(direction, glm::vec3(0, 1, 0)));
+
+	if (currentKeyStates[SDL_SCANCODE_W])
+	{
+		EP.CAM.camPos -= (direction * EP.CAM.CAMERA_MOVESPEED);
+	}
+	if (currentKeyStates[SDL_SCANCODE_S])
+	{
+		EP.CAM.camPos += (direction * EP.CAM.CAMERA_MOVESPEED);
+	}
+	if (currentKeyStates[SDL_SCANCODE_A])
+	{
+		EP.CAM.camPos += right * EP.CAM.CAMERA_MOVESPEED;
+	}
+	if (currentKeyStates[SDL_SCANCODE_D])
+	{
+		EP.CAM.camPos -= right * EP.CAM.CAMERA_MOVESPEED;
+	}
+	if (currentKeyStates[SDL_SCANCODE_LCTRL])
+	{
+		EP.CAM.camPos.y -= EP.CAM.CAMERA_MOVESPEED;
+	}
+	if (currentKeyStates[SDL_SCANCODE_SPACE])
+	{
+		EP.CAM.camPos.y += EP.CAM.CAMERA_MOVESPEED;
+	}
+}
+
+//
 void testEnviroment()
 {
+	bool mouseTracking = true;
+	float deltaX = 0;
+	float deltaY = 0;
+
+	SDL_ShowCursor(0);
+
 	while (EP.EXECUTE.exitCurrentLoop == false)
 	{
 		while (SDL_PollEvent(&e))
@@ -1577,47 +1560,51 @@ void testEnviroment()
 			{
 				EP.EXECUTE.exitCurrentLoop = true;
 			}
+			else if (e.type == SDL_WINDOWEVENT)
+			{
+				if (e.window.event == SDL_WINDOWEVENT_FOCUS_GAINED && e.window.windowID == SDL_GetWindowID(gWindow.getWindow()))
+				{
+					mouseTracking = true; 
+				}
+			}
+			else if (e.type == SDL_MOUSEMOTION)
+			{
+				if (mouseTracking && gWindow.getWindow() == SDL_GetKeyboardFocus()) 
+				{
+					deltaX = e.motion.x - EP.TEMP.MOUSE_X;
+					deltaY = e.motion.y - EP.TEMP.MOUSE_Y;
+
+					EP.CAM.YAW += deltaX/EP.CAM.MOUSE_SENSITIVITY;
+					EP.CAM.PITCH += deltaY/EP.CAM.MOUSE_SENSITIVITY;
+
+					EP.TEMP.MOUSE_X = e.motion.x;
+					EP.TEMP.MOUSE_Y = e.motion.y;
+
+					if (e.motion.x > gWindow.getWidth() - 10 || e.motion.x < 10 || e.motion.y > gWindow.getHeight()-10 || e.motion.y < 10)
+					{
+						SDL_WarpMouseInWindow(gWindow.getWindow(), gWindow.getWidth() / 2, gWindow.getHeight() / 2);
+						EP.TEMP.MOUSE_X = gWindow.getWidth() / 2;
+						EP.TEMP.MOUSE_Y = gWindow.getHeight() / 2;
+					}
+
+				}
+			}
 			else if (e.type == SDL_KEYDOWN)
 			{
 				if (e.key.keysym.sym == SDLK_ESCAPE)
 				{
 					
 				}	
-				else if (e.key.keysym.sym == SDLK_LCTRL)
+				if (e.key.keysym.sym == SDLK_LALT || e.key.keysym.sym == SDLK_LGUI)
 				{
-					EP.CAM.camPos.y += 0.1f;
-				}
-				else if (e.key.keysym.sym == SDLK_SPACE)
-				{
-					EP.CAM.camPos.y -= 0.1f;
-				}
-				else if (e.key.keysym.sym == SDLK_a)
-				{
-					EP.CAM.camPos.x += 0.1f;
-				}
-				else if (e.key.keysym.sym == SDLK_d)
-				{
-					EP.CAM.camPos.x -= 0.1f;
-				}
-				else if (e.key.keysym.sym == SDLK_w)
-				{
-					EP.CAM.camPos.z += 0.1f;
-				}
-				else if (e.key.keysym.sym == SDLK_s)
-				{
-					EP.CAM.camPos.z -= 0.1f;
-				}
-				else if (e.key.keysym.sym == SDLK_r)
-				{
-					EP.CAM.camUp.y += 1.0f; // Move camera up by 1 unit
-				}
-				else if (e.key.keysym.sym == SDLK_f)
-				{
-					EP.CAM.camFront.z *= -1.0f; // Invert z-component of camFront to face the other way
+					SDL_RaiseWindow(gWindow.getTempWindow());
+					mouseTracking = false;
 				}
 			}
 		}
 		gWindow.handleEvent(e);
+
+		handleKeyboardEvent(e);
 
 		handleCamera();
 

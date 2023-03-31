@@ -70,14 +70,16 @@ void Mesh::meshInit(VkPhysicalDevice PHYSICAL_DEVICE_P, VkDevice LOGICAL_DEVICE_
     COMMAND_POOL = COMMAND_POOL_P;
     COMMAND_BUFFER = COMMAND_BUFFER_P;
 
-    const char * filename = "assets/cube.obj";
+    const char * filename = "assets/bugatti.obj";
+    const char* mtl_dir = "assets/";
+
 
     tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> materials;
     std::string warn, err;
 
-    bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filename);
+    bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filename, mtl_dir);
     if (!warn.empty()) std::cout << "WARN: " << warn << std::endl;
     if (!err.empty()) std::cerr << err << std::endl;
     if (!ret) exit(1);
@@ -105,39 +107,21 @@ void Mesh::meshInit(VkPhysicalDevice PHYSICAL_DEVICE_P, VkDevice LOGICAL_DEVICE_
                 v.texcoord = glm::vec2(attrib.texcoords[2 * index.texcoord_index + 0],
                     1.0f - attrib.texcoords[2 * index.texcoord_index + 1]); // flip texcoord y-axis to match OpenGL convention
             }
-            v.color = glm::vec3(1.0f, 0.0f, 0.0f);
             vertices.push_back(v);
         }
     }
 
-    for (const auto& shape : shapes)
-    {
-        for (const auto& index : shape.mesh.indices)
-        {
-            Vertex v = {};
-            if (index.vertex_index >= 0 && index.vertex_index < attrib.vertices.size() / 3)
-            {
-                v.position = glm::vec3(attrib.vertices[3 * index.vertex_index + 0], attrib.vertices[3 * index.vertex_index + 1],attrib.vertices[3 * index.vertex_index + 2]+1);
-            }
-            if (index.normal_index >= 0 && index.normal_index < attrib.normals.size() / 3)
-            {
-                v.normal = glm::vec3(attrib.normals[3 * index.normal_index + 0],
-                    attrib.normals[3 * index.normal_index + 1],
-                    attrib.normals[3 * index.normal_index + 2]);
-            }
-            if (index.texcoord_index >= 0 && index.texcoord_index < attrib.texcoords.size() / 2)
-            {
-                v.texcoord = glm::vec2(attrib.texcoords[2 * index.texcoord_index + 0],
-                    1.0f - attrib.texcoords[2 * index.texcoord_index + 1]); // flip texcoord y-axis to match OpenGL convention
-            }
-            v.color = glm::vec3(1.0f, 1.0f, 0.0f);
-            vertices.push_back(v);
-        }
-    }
 
     std::cout << "Loaded " << filename << " with " << vertices.size() << " vertices" << std::endl;
 
-
+    for (int i = 0;i<vertices.size();i++)
+    {
+        if (i % 2 == 0)
+        {
+            vertices[i].color = glm::vec3(1.0f, 0.0f, 0.0f);
+        }
+      
+    }
 
     uploadMesh();
 }
