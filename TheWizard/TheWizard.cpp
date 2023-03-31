@@ -324,6 +324,8 @@ struct engineParameters
 			glm::mat4 render_matrix;
 		}MPC;
 
+		MeshPushConstants CONSTANTS;
+
 		int FRAME_NUMBER = 0;
 		int FRAME_NUMBER_DEPTH = 0;
 
@@ -384,6 +386,7 @@ void handleCamera()
 	// Combine view, projection, and model matrices
 	EP.CAM.mesh_matrix = projection * EP.CAM.view * EP.CAM.model;
 
+	EP.RND.CONSTANTS.render_matrix = EP.CAM.mesh_matrix;
 
 	EP.RND.FRAME_NUMBER > 120 ? EP.RND.FRAME_NUMBER = 0 : EP.RND.FRAME_NUMBER++;
 
@@ -475,49 +478,17 @@ void vkRender()
 
 	VK.getRenderPassBeginInfo()->framebuffer = VK.getSwapchainFramebuffer(*VK.getImageIndex());
 
-
 	vkBeginCommandBuffer(VK.getCommandBuffer(), VK.getCommandBufferBeginInfo());
 
-
-
-	VkClearValue clearValuesx[2];
-	clearValuesx[0] = { 0.0f, 0.0f, 0.0f, 1.0f }; // or whatever your first clear value is
-	//clear depth at 1
-	VkClearValue depthClear;
-	depthClear.depthStencil.depth = 1.f;
-
-	//start the main renderpass.
-	//We will use the clear color from above, and the framebuffer of the index the swapchain gave us
-	VkRenderPassBeginInfo rpInfo = VK.getRenderPassBeginInfoEx();
-
-	//connect clear values
-	rpInfo.clearValueCount = 2;
-
-	VkClearValue clearValues[] = { clearValuesx[0], depthClear };
-
-	rpInfo.pClearValues = &clearValues[0];
-
-	vkCmdBeginRenderPass(VK.getCommandBuffer(), &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-	// begin recording commands
-
-
-	//vkCmdBeginRenderPass(VK.getCommandBuffer(), VK.getRenderPassBeginInfo(), VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBeginRenderPass(VK.getCommandBuffer(), VK.getRenderPassBeginInfo(), VK_SUBPASS_CONTENTS_INLINE);
 
 	vkCmdBindPipeline(VK.getCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, VK.getCurrentPipeline());
 
 
 	vkCmdBindVertexBuffers(VK.getCommandBuffer(), 0, 1, VK.MESH.getVertexBuffer(), &offset);
 
-	struct MeshPushConstants {
-		glm::vec4 data;
-		glm::mat4 render_matrix;
-	};
 
-	MeshPushConstants constants;
-	constants.render_matrix = EP.CAM.mesh_matrix;
-
-	vkCmdPushConstants(VK.getCommandBuffer(), VK.getPipelineLayout(VK.MESH), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &constants);
+	vkCmdPushConstants(VK.getCommandBuffer(), VK.getPipelineLayout(VK.MESH), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(EP.RND.CONSTANTS), &EP.RND.CONSTANTS);
 
 	vkCmdDraw(VK.getCommandBuffer(), VK.MESH.getVerticesSize(), 1, 0, 0);
 

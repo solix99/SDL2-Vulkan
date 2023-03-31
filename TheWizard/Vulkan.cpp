@@ -434,7 +434,7 @@ bool Vulkan::initVulkan()
 	std::vector<VkPhysicalDevice> devices(deviceCount);
 	vkEnumeratePhysicalDevices(INSTANCE_VK, &deviceCount, devices.data());
 
-	for  (const auto& device : devices)
+	for (const auto& device : devices)
 	{
 		if (isDeviceSuitable(device))
 		{
@@ -442,7 +442,7 @@ bool Vulkan::initVulkan()
 			break;
 		}
 	}
-	
+
 	VkDeviceCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 
@@ -494,7 +494,7 @@ bool Vulkan::initVulkan()
 
 	vkGetPhysicalDeviceProperties(PHYSICAL_DEVICE_VK, &DEVICE_PROPERTIES_VK);
 	vkGetPhysicalDeviceFeatures(PHYSICAL_DEVICE_VK, &DEVICE_FEATURES_VK);
-	
+
 
 	//create a logical device using parameters : deviceFeatures,PHYSICAL_DEVICE_VK
 
@@ -655,14 +655,14 @@ bool Vulkan::initVulkan()
 
 	vector<VkImageView> swapchainImageViews(swapchainImageCount);
 
-	for (uint32_t i = 0; i < swapchainImageCount; i++) 
+	for (uint32_t i = 0; i < swapchainImageCount; i++)
 	{
 		VkImageViewCreateInfo imageViewCreateInfo = {};
 		imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		imageViewCreateInfo.image = swapchainImages[i];
 		imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 		imageViewCreateInfo.format = surfaceFormat.format;
-		imageViewCreateInfo.components = 
+		imageViewCreateInfo.components =
 		{
 			VK_COMPONENT_SWIZZLE_IDENTITY, // R
 			VK_COMPONENT_SWIZZLE_IDENTITY, // G
@@ -878,26 +878,20 @@ bool Vulkan::initVulkan()
 	COMMAND_BUFFER_BEGIN_INFO_VK.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	COMMAND_BUFFER_BEGIN_INFO_VK.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
-	VkClearValue clearValues[2];
-	clearValues[0] = { 0.0f, 0.0f, 0.0f, 1.0f }; // or whatever your first clear value is
-	clearValues[1] = { 0.0f, 0.0f, 0.0f, 1.0f }; // or whatever your second clear value is
-	
+	VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f }; // Clear to black with full alpha
 
-	VkClearColorValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f }; // Clear to black with full alpha
-	VkClearValue clearValue = {};
-	clearValue.depthStencil = { 1.0f, 0 }; // Depth value of 1.0, stencil value of 0
-	clearValue.color = clearColor;
+	VkClearValue depthClear;
+	depthClear.depthStencil.depth = 1.0f;
 
-
-	VkClearDepthStencilValue depthValue = { 1.0f, 0 };
-
+	clearValues[0] = clearColor;
+	clearValues[1] = depthClear;
 
 	RENDER_PASS_BEGIN_INFO_VK.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	RENDER_PASS_BEGIN_INFO_VK.renderPass = RENDER_PASS_VK;
 	RENDER_PASS_BEGIN_INFO_VK.renderArea.offset = { 0,0 };
 	RENDER_PASS_BEGIN_INFO_VK.renderArea.extent = SWAPCHAIN_EXTENT;
 	RENDER_PASS_BEGIN_INFO_VK.clearValueCount = 2;
-	RENDER_PASS_BEGIN_INFO_VK.pClearValues = &clearValue;
+	RENDER_PASS_BEGIN_INFO_VK.pClearValues = &clearValues[0];
 	RENDER_PASS_BEGIN_INFO_VK.framebuffer = SWAPCHAIN_FRAMEBUFFER_VK[0];
 
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };

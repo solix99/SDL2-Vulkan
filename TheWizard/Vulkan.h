@@ -141,6 +141,8 @@ private:
 	VkPipelineLayout meshPipelineLayout = VK_NULL_HANDLE;
 	VkResult result = VK_SUCCESS;
 	VkDescriptorSet depthDescriptorSet;
+	VkClearValue clearValues[2];
+
 
 	struct PIPELINES
 	{
