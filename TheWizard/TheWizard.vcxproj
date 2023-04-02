@@ -170,6 +170,7 @@
     <ClCompile Include="LTimer.cpp" />
     <ClCompile Include="LWindow.cpp" />
     <ClCompile Include="Mesh.cpp" />
+    <ClCompile Include="Object.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="TheWizard.cpp" />
     <ClCompile Include="Vulkan.cpp" />
@@ -186,6 +187,7 @@
     <ClInclude Include="LTimer.h" />
     <ClInclude Include="LWindow.h" />
     <ClInclude Include="Mesh.h" />
+    <ClInclude Include="Object.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="Vars.h" />
     <ClInclude Include="Vulkan.h" />

@@ -36,10 +36,7 @@ Mesh::Mesh()
     description.ATTRIBUTES.push_back(normalAttribute);
     description.ATTRIBUTES.push_back(colorAttribute);
 
-    std::cout << std::endl << &MPC << " - MPC VAL";
-
 }
-
 
 glm::vec4 Mesh::getPushConstantsData()
 {
@@ -50,15 +47,10 @@ glm::mat4 Mesh::getPushConstantsMatrix()
     return pushConstants.render_matrix;
 }
 
-Mesh::Mesh(const char* filename)
+Mesh::Mesh(const char* filename, VkPhysicalDevice PHYSICAL_DEVICE_P, VkDevice LOGICAL_DEVICE_P, VkInstance INSTACE_P, VkQueue GRAPHICS_QUEUE_P, VmaAllocator allocator, VmaAllocatorCreateInfo ALLOCATOR_INFO)
 {
-
-
-}
-
-
-void Mesh::meshInit(VkPhysicalDevice PHYSICAL_DEVICE_P, VkDevice LOGICAL_DEVICE_P, VkInstance INSTACE_P, VkCommandPool COMMAND_POOL_P, VkCommandBuffer COMMAND_BUFFER_P, VkQueue GRAPHICS_QUEUE_P,VmaAllocator allocator, VmaAllocatorCreateInfo ALLOCATOR_INFO)
-{
+    OBJECT_NAME = filename;
+    OBJECT_NAME.erase(0, 7);
 
     ALLOCATOR = allocator;
     VmaAllocatorInfo = ALLOCATOR_INFO;
@@ -67,10 +59,80 @@ void Mesh::meshInit(VkPhysicalDevice PHYSICAL_DEVICE_P, VkDevice LOGICAL_DEVICE_
     LOGICAL_DEVICE = LOGICAL_DEVICE_P;
     INSTANCE = INSTACE_P;
     GRAPHICS_QUEUE = GRAPHICS_QUEUE_P;
-    COMMAND_POOL = COMMAND_POOL_P;
-    COMMAND_BUFFER = COMMAND_BUFFER_P;
 
-    const char * filename = "assets/bugatti.obj";
+    //  const char * filename = "assets/bugatti.obj";
+    const char* mtl_dir = "assets/";
+
+
+    tinyobj::attrib_t attrib;
+    std::vector<tinyobj::shape_t> shapes;
+    std::vector<tinyobj::material_t> materials;
+    std::string warn, err;
+
+    bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filename, mtl_dir);
+    if (!warn.empty()) std::cout << "WARN: " << warn << std::endl;
+    if (!err.empty()) std::cerr << err << std::endl;
+    if (!ret) exit(1);
+
+
+    for (const auto& shape : shapes)
+    {
+        for (const auto& index : shape.mesh.indices)
+        {
+            Vertex v = {};
+            if (index.vertex_index >= 0 && index.vertex_index < attrib.vertices.size() / 3)
+            {
+                v.position = glm::vec3(attrib.vertices[3 * index.vertex_index + 0],
+                    attrib.vertices[3 * index.vertex_index + 1],
+                    attrib.vertices[3 * index.vertex_index + 2]);
+            }
+            if (index.normal_index >= 0 && index.normal_index < attrib.normals.size() / 3)
+            {
+                v.normal = glm::vec3(attrib.normals[3 * index.normal_index + 0],
+                    attrib.normals[3 * index.normal_index + 1],
+                    attrib.normals[3 * index.normal_index + 2]);
+            }
+            if (index.texcoord_index >= 0 && index.texcoord_index < attrib.texcoords.size() / 2)
+            {
+                v.texcoord = glm::vec2(attrib.texcoords[2 * index.texcoord_index + 0],
+                    1.0f - attrib.texcoords[2 * index.texcoord_index + 1]); // flip texcoord y-axis to match OpenGL convention
+            }
+            vertices.push_back(v);
+        }
+    }
+
+
+    std::cout << "Loaded " << filename << " with " << vertices.size() << " vertices" << std::endl;
+
+    for (int i = 0; i < vertices.size(); i++)
+    {
+        if (i % 2 == 0)
+        {
+            vertices[i].color = glm::vec3(1.0f, 0.0f, 0.0f);
+        }
+
+    }
+
+    uploadMesh();
+
+}
+
+
+void Mesh::meshInit(const char* filename ,VkPhysicalDevice PHYSICAL_DEVICE_P, VkDevice LOGICAL_DEVICE_P, VkInstance INSTACE_P, VkQueue GRAPHICS_QUEUE_P,VmaAllocator allocator, VmaAllocatorCreateInfo ALLOCATOR_INFO)
+{
+
+    OBJECT_NAME = filename;
+    OBJECT_NAME.erase(0,7);
+
+    ALLOCATOR = allocator;
+    VmaAllocatorInfo = ALLOCATOR_INFO;
+
+    PHYSICAL_DEVICE = PHYSICAL_DEVICE_P;
+    LOGICAL_DEVICE = LOGICAL_DEVICE_P;
+    INSTANCE = INSTACE_P;
+    GRAPHICS_QUEUE = GRAPHICS_QUEUE_P;
+
+  //  const char * filename = "assets/bugatti.obj";
     const char* mtl_dir = "assets/";
 
 
@@ -126,10 +188,39 @@ void Mesh::meshInit(VkPhysicalDevice PHYSICAL_DEVICE_P, VkDevice LOGICAL_DEVICE_
     uploadMesh();
 }
 
+void Mesh::setMeshCoord(double x, double y, double z)
+{
+    glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, z));
+
+    for (auto& vertex : vertices)
+    {
+        // Apply the translation matrix to the position of each vertex
+        glm::vec4 transformedPosition = translationMatrix * glm::vec4(vertex.position, 1.0f);
+        vertex.position = glm::vec3(transformedPosition);
+    }
+
+}
+
+glm::mat4 Mesh::getModelMatrix()
+{
+    glm::vec3 center(0.0f);
+    for (const auto& vertex : vertices) {
+        center += vertex.position;
+    }
+    center /= vertices.size();
+
+    // Calculate the desired position of the mesh in world space
+    glm::vec3 desiredPosition(1.0f, 2.0f, 3.0f);
+
+    // Calculate translation matrix
+    glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), desiredPosition - center);
+    
+    return translationMatrix;
+}
+
 
 uint32_t Mesh::getVerticesSize()
 {
-    //std::cout << std::endl << "IN MESH :" << vertices.size();
     return vertices.size();
 }
 
@@ -211,9 +302,9 @@ void Mesh::uploadMesh()
 
     void* data;
 
-    std::cout << std::endl << vertices.data() << " " << vertices.size();
+   // std::cout << std::endl << vertices.data() << " " << vertices.size();
 
-    std::cout << std::endl << ALLOCATOR << " " << &bufferInfo << " " << &vmaallocInfo << " " << &VERTEX_BUFFER.BUFFER << " " << &VERTEX_BUFFER.ALLOCATION << " ";
+    //std::cout << std::endl << ALLOCATOR << " " << &bufferInfo << " " << &vmaallocInfo << " " << &VERTEX_BUFFER.BUFFER << " " << &VERTEX_BUFFER.ALLOCATION << " ";
 
     vmaMapMemory(ALLOCATOR, VERTEX_BUFFER.ALLOCATION, &data);
 

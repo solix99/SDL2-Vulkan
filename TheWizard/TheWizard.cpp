@@ -390,27 +390,20 @@ void handleCamera()
 
 	// Calculate projection matrix with depth information
 
-	glm::mat4 projection = glm::mat4(0.0f);
-	projection[0][0] = 1.0f / (aspectRatio * tanHalfFov);
-	projection[1][1] = 1.0f / tanHalfFov;
-	projection[2][2] = -(farPlane + nearPlane) / (farPlane - nearPlane);
-	projection[2][3] = -1.0f;
-	projection[3][2] = -(2.0f * farPlane * nearPlane) / (farPlane - nearPlane);
+	EP.CAM.projection = glm::mat4(0.0f);
+	EP.CAM.projection[0][0] = 1.0f / (aspectRatio * tanHalfFov);
+	EP.CAM.projection[1][1] = 1.0f / tanHalfFov;
+	EP.CAM.projection[2][2] = -(farPlane + nearPlane) / (farPlane - nearPlane);
+	EP.CAM.projection[2][3] = -1.0f;
+	EP.CAM.projection[3][2] = -(2.0f * farPlane * nearPlane) / (farPlane - nearPlane);
 
 	// Modify projection matrix to invert y-axis to match OpenGL coordinate system
-	projection[1][1] *= -1;
+	EP.CAM.projection[1][1] *= -1;
 
-	// Calculate model matrix
-	EP.CAM.model = glm::rotate(glm::mat4{ 1.f}, glm::radians(0.4f), glm::vec3(0, 1, 0));
 
-	// Combine view, projection, and model matrices
-	EP.CAM.mesh_matrix = projection * EP.CAM.view * EP.CAM.model;
-
-	EP.RND.CONSTANTS.render_matrix = EP.CAM.mesh_matrix;
+	//cout << endl << "X:" << EP.CAM.camPos.x << " Y:" << EP.CAM.camPos.y << " Z:" << EP.CAM.camPos.z;
 
 }
-
-
 
 
 void vkRender()
@@ -425,11 +418,21 @@ void vkRender()
 
 	vkCmdBindPipeline(VK.getCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, VK.getCurrentPipeline());
 
-	vkCmdBindVertexBuffers(VK.getCommandBuffer(), 0, 1, VK.MESH.getVertexBuffer(), &EP.RND.OFFSET);
+	for (size_t i = 0; i < VK.getMeshesSize(); ++i)
+	{
 
-	vkCmdPushConstants(VK.getCommandBuffer(), VK.getPipelineLayout(VK.MESH), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(EP.RND.CONSTANTS), &EP.RND.CONSTANTS);
+		EP.CAM.model = VK.MESHES[i].getModelMatrix();
 
-	vkCmdDraw(VK.getCommandBuffer(), VK.MESH.getVerticesSize(), 1, 0, 0);
+		EP.CAM.mesh_matrix = EP.CAM.projection * EP.CAM.view * EP.CAM.model;
+
+		EP.RND.CONSTANTS.render_matrix = EP.CAM.mesh_matrix;
+
+		vkCmdBindVertexBuffers(VK.getCommandBuffer(), 0, 1, VK.MESHES[i].getVertexBuffer(), &EP.RND.OFFSET);
+
+		vkCmdPushConstants(VK.getCommandBuffer(), VK.getPipelineLayout(VK.MESHES[i]), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(EP.RND.CONSTANTS), &EP.RND.CONSTANTS);
+
+		vkCmdDraw(VK.getCommandBuffer(), VK.MESHES[i].getVerticesSize(), 1, 0, 0);
+	}
 
 	vkCmdEndRenderPass(VK.getCommandBuffer());
 
@@ -1188,8 +1191,7 @@ bool init()
 		}
 	}
 
-	//VK.initPipeline("PIPE1","shaders/colored_triangle_vertex.spv","shaders/colored_triangle_frag.spv");
-	VK.initPipeline("PIPE2", "shaders/tri_mesh.spv", "shaders/colored_triangle_frag.spv",VK.MESH);
+	VK.initPipeline("PIPE1", "shaders/tri_mesh.spv", "shaders/colored_triangle_frag.spv", VK.MESH_DUMMY);
 
 	return success;
 }
@@ -1244,6 +1246,9 @@ bool connectToGameServer()
 
 bool loadMedia()
 {
+
+	return true;
+
 	bool success = true;
 
 	if (!loginPage_texture.loadFromFile("img/loginPage.png", gWindow.getRenderer()))
@@ -1552,6 +1557,7 @@ void testEnviroment()
 
 	SDL_ShowCursor(0);
 
+
 	while (EP.EXECUTE.exitCurrentLoop == false)
 	{
 		while (SDL_PollEvent(&e))
@@ -1602,6 +1608,7 @@ void testEnviroment()
 				}
 			}
 		}
+
 		gWindow.handleEvent(e);
 
 		handleKeyboardEvent(e);
@@ -1609,6 +1616,7 @@ void testEnviroment()
 		handleCamera();
 
 		vkRender();
+
 	}
 }
 
@@ -1632,7 +1640,6 @@ int main(int argc, char* args[])
 		else
 		{
 			srand(time(NULL));
-
 			//THREAD.PHYSICS = SDL_CreateThread(processPhysics, "processPhysics", (void*)NULL);
 			testEnviroment();
 

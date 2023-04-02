@@ -45,8 +45,6 @@ struct DeletionQueue
 };
 
 
-
-
 class Vulkan
 {
 public:
@@ -56,8 +54,8 @@ public:
 	bool cleanup();
 	bool initVulkan();
 	bool isDeviceSuitable(VkPhysicalDevice) ; 
+	bool loadMeshes();
 	VkDevice getLogicalDevice() ;
-	//	create get function for COMMAND_BUFFER_VK, SWAPCHAIN_VK, SEMAPHORE_IMAGE_AVAILABLE_VK, IMAGE_INDEX_VK, SWAPCHAIN_FRAMEBUFFER_VK, SUBMIT_INFO_VK, COMMAND_BUFFER_VK
 	VkCommandBuffer getCommandBuffer() ;
 	VkSwapchainKHR getSwapchain() ;
 	VkSemaphore getSemaphoreSignal() ;
@@ -82,7 +80,7 @@ public:
 	void setCurrentGraphicsPipeline(VkPipeline pipeline);
 	VkPipelineLayout getPipelineLayout(Mesh & MESH);
 	VkRenderPassBeginInfo getRenderPassBeginInfoEx();
-
+	size_t getMeshesSize();
 	VkImage getSwapchainImage();
 
 	VkImageCreateInfo imageCreateInfo(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent);
@@ -99,8 +97,9 @@ public:
 	VkDescriptorSet *getDescriptorSet();
 
 
-	Mesh MESH;
-	//Mesh MESH_MONKEY;
+	vector <Mesh> MESHES;
+
+	Mesh MESH_DUMMY;
 
 private:
 

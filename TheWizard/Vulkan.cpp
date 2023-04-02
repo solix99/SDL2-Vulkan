@@ -40,11 +40,8 @@ Vulkan::Vulkan(LWindow &window)
 
 	initVulkan();
 
-	//MESH.meshInit(PHYSICAL_DEVICE_VK,LOGICAL_DEVICE_VK,INSTANCE_VK,COMMAND_POOL_VK,COMMAND_BUFFER_VK,GRAPHICS_QUEUE_VK);
+	loadMeshes();
 
-	//MESH_MONKEY = Mesh("assets/cube.obj");
-
-	MESH.meshInit(PHYSICAL_DEVICE_VK, LOGICAL_DEVICE_VK, INSTANCE_VK, COMMAND_POOL_VK, COMMAND_BUFFER_VK, GRAPHICS_QUEUE_VK,ALLOCATOR,ALLOCATOR_INFO);
 }
 
 Vulkan::~Vulkan()
@@ -57,6 +54,21 @@ Vulkan::~Vulkan()
 
 		});
 }
+
+bool Vulkan::loadMeshes()
+{
+	MESH_DUMMY.meshInit("assets/cube.obj", PHYSICAL_DEVICE_VK, LOGICAL_DEVICE_VK, INSTANCE_VK, GRAPHICS_QUEUE_VK, ALLOCATOR, ALLOCATOR_INFO);
+
+	//MESHES.emplace_back("assets/bugatti.obj", PHYSICAL_DEVICE_VK, LOGICAL_DEVICE_VK, INSTANCE_VK, GRAPHICS_QUEUE_VK, ALLOCATOR, ALLOCATOR_INFO);
+	MESHES.emplace_back("assets/cube.obj", PHYSICAL_DEVICE_VK, LOGICAL_DEVICE_VK, INSTANCE_VK, GRAPHICS_QUEUE_VK, ALLOCATOR, ALLOCATOR_INFO);
+	MESHES.emplace_back("assets/Suzanne.obj", PHYSICAL_DEVICE_VK, LOGICAL_DEVICE_VK, INSTANCE_VK, GRAPHICS_QUEUE_VK, ALLOCATOR, ALLOCATOR_INFO);
+
+	MESHES[0].setMeshCoord(0,-5,0);
+	
+
+	return true;
+
+}
 	
 VkPhysicalDevice Vulkan::getPhysicalDevice()
 {
@@ -67,6 +79,7 @@ VkCommandPool Vulkan::getCommandPool()
 {
 	return COMMAND_POOL_VK;
 }
+
 
 VkPipeline Vulkan::switchPipeline()
 {
@@ -284,7 +297,10 @@ VkPipelineDepthStencilStateCreateInfo Vulkan::depthStencilCreateInfo(bool bDepth
 
 	return info;
 }
-
+size_t Vulkan::getMeshesSize()
+{
+	return MESHES.size();
+}
 
 
 VkDescriptorSet *Vulkan::getDescriptorSet()

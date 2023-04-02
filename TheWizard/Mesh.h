@@ -24,7 +24,7 @@ class Mesh
 {
 public:
 	Mesh();
-	Mesh(const char* filename);
+	Mesh(const char* filename, VkPhysicalDevice PHYSICAL_DEVICE_P, VkDevice LOGICAL_DEVICE_P, VkInstance INSTACE_P, VkQueue GRAPHICS_QUEUE_P, VmaAllocator allocator, VmaAllocatorCreateInfo ALLOCATOR_INFO);
 
 	struct Vertex
 	{
@@ -49,18 +49,21 @@ public:
 	VertexInputDescription description;
 	MeshPushConstants pushConstants;
 
-	void meshInit(VkPhysicalDevice PHYSICAL_DEVICE_P, VkDevice LOGICAL_DEVICE_P, VkInstance INSTACE_P, VkCommandPool COMMAND_POOL_P, VkCommandBuffer COMMAND_BUFFER_P, VkQueue GRAPHICS_QUEUE_P, VmaAllocator ALLOCATOR, VmaAllocatorCreateInfo ALLOCATOR_INFO);
+	void meshInit(const char *file ,VkPhysicalDevice PHYSICAL_DEVICE_P, VkDevice LOGICAL_DEVICE_P, VkInstance INSTACE_P, VkQueue GRAPHICS_QUEUE_P, VmaAllocator ALLOCATOR, VmaAllocatorCreateInfo ALLOCATOR_INFO);
 
 	uint32_t getVerticesSize();
 	VkBuffer *getVertexBuffer();
 
 	glm::vec4 getPushConstantsData();
 	glm::mat4 getPushConstantsMatrix();
+	glm::mat4 getModelMatrix();
 	void loadMesh();
 	void uploadMesh();
-
+	void setMeshCoord(double x, double y, double z);
 
 private:
+
+	string OBJECT_NAME;
 
 	VkPhysicalDevice PHYSICAL_DEVICE;
 	VkDevice LOGICAL_DEVICE;
@@ -68,6 +71,7 @@ private:
 	VkCommandPool COMMAND_POOL;
 	VkCommandBuffer COMMAND_BUFFER;
 	VkInstance INSTANCE;
+	
 
 	std::vector<Vertex> vertices;
 
