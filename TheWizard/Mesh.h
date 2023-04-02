@@ -60,10 +60,12 @@ public:
 	void loadMesh();
 	void uploadMesh();
 	void setMeshCoord(double x, double y, double z);
+	string getName();
+
 
 private:
 
-	string OBJECT_NAME;
+	string MESH_NAME;
 
 	VkPhysicalDevice PHYSICAL_DEVICE;
 	VkDevice LOGICAL_DEVICE;

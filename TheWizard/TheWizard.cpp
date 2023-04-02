@@ -43,7 +43,7 @@
 #include "Mesh.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-
+#include "Object.h"
 
 WSADATA wData;
 #pragma comment(lib, "Ws2_32.lib")
@@ -110,7 +110,8 @@ struct MEMEORY
 	}MAP;
 	struct OBJECT_DATA
 	{
-		LCrypto Crypto;
+		Object DUMMY;
+		vector <Object> VECTOR;
 
 	}OBJ;
 }MEM;
@@ -420,7 +421,6 @@ void vkRender()
 
 	for (size_t i = 0; i < VK.getMeshesSize(); ++i)
 	{
-
 		EP.CAM.model = VK.MESHES[i].getModelMatrix();
 
 		EP.CAM.mesh_matrix = EP.CAM.projection * EP.CAM.view * EP.CAM.model;
@@ -1246,6 +1246,16 @@ bool connectToGameServer()
 
 bool loadMedia()
 {
+
+	VK.loadMeshes();
+
+	glm::vec3 POS;
+
+	
+	POS = {0,5,0};
+	MEM.OBJ.DUMMY.init(POS,VK.getMeshByName("cube"));
+
+
 
 	return true;
 

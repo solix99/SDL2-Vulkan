@@ -82,6 +82,7 @@ public:
 	VkRenderPassBeginInfo getRenderPassBeginInfoEx();
 	size_t getMeshesSize();
 	VkImage getSwapchainImage();
+	Mesh *getMeshByName(string name);
 
 	VkImageCreateInfo imageCreateInfo(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent);
 	VkImageViewCreateInfo imageViewCreateInfo(VkFormat format, VkImage image, VkImageAspectFlags aspectFlags);

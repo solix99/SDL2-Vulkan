@@ -40,8 +40,19 @@ Vulkan::Vulkan(LWindow &window)
 
 	initVulkan();
 
-	loadMeshes();
 
+}
+
+
+Mesh *Vulkan::getMeshByName(string name)
+{
+	for (Mesh msh : MESHES)
+	{
+		if (msh.getName() == name)
+		{
+			return &msh;
+		}
+	}
 }
 
 Vulkan::~Vulkan()
@@ -62,10 +73,7 @@ bool Vulkan::loadMeshes()
 	//MESHES.emplace_back("assets/bugatti.obj", PHYSICAL_DEVICE_VK, LOGICAL_DEVICE_VK, INSTANCE_VK, GRAPHICS_QUEUE_VK, ALLOCATOR, ALLOCATOR_INFO);
 	MESHES.emplace_back("assets/cube.obj", PHYSICAL_DEVICE_VK, LOGICAL_DEVICE_VK, INSTANCE_VK, GRAPHICS_QUEUE_VK, ALLOCATOR, ALLOCATOR_INFO);
 	MESHES.emplace_back("assets/Suzanne.obj", PHYSICAL_DEVICE_VK, LOGICAL_DEVICE_VK, INSTANCE_VK, GRAPHICS_QUEUE_VK, ALLOCATOR, ALLOCATOR_INFO);
-
-	MESHES[0].setMeshCoord(0,-5,0);
 	
-
 	return true;
 
 }
