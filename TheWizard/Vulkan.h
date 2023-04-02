@@ -25,6 +25,7 @@
 
 using namespace std;
 
+constexpr unsigned int FRAME_OVERLAP = 2;
 
 struct DeletionQueue
 {
@@ -43,7 +44,6 @@ struct DeletionQueue
 		deletors.clear();
 	}
 };
-
 
 class Vulkan
 {
@@ -83,6 +83,7 @@ public:
 	size_t getMeshesSize();
 	VkImage getSwapchainImage();
 	Mesh *getMeshByName(string name);
+	void newFrameRendered();
 
 	VkImageCreateInfo imageCreateInfo(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent);
 	VkImageViewCreateInfo imageViewCreateInfo(VkFormat format, VkImage image, VkImageAspectFlags aspectFlags);
@@ -93,10 +94,22 @@ public:
 		VmaAllocation _allocation;
 	};
 
+	struct FrameData {
+		VkSemaphore _presentSemaphore, _renderSemaphore;
+		VkFence _renderFence;
+
+		VkCommandPool _commandPool;
+		VkCommandBuffer _mainCommandBuffer;
+	};
+
+	unsigned long int _frameNumber = 0;
+
+
 	VmaAllocator ALLOCATOR;
 	VmaAllocatorCreateInfo ALLOCATOR_INFO = {};
 	VkDescriptorSet *getDescriptorSet();
 
+	FrameData& getCurrentFrame();
 
 	vector <Mesh> MESHES;
 
@@ -142,6 +155,8 @@ private:
 	VkResult result = VK_SUCCESS;
 	VkDescriptorSet depthDescriptorSet;
 	VkClearValue clearValues[2];
+
+	FrameData _frames[FRAME_OVERLAP];
 
 
 	struct PIPELINES

@@ -445,6 +445,15 @@ void Vulkan::initPipeline(string name,string sShaderVertex,string sShaderFragmen
 	PIPE.GRAPHICS_PIPELINES_VK.push_back(PIPELINE_TEMP);
 }
 
+Vulkan::FrameData& Vulkan::getCurrentFrame()
+{
+	return _frames[_frameNumber % FRAME_OVERLAP];
+}
+
+void Vulkan::newFrameRendered()
+{
+	_frameNumber++;
+}
 bool Vulkan::initVulkan()
 {
 	uint32_t deviceCount = 0;
@@ -845,9 +854,26 @@ bool Vulkan::initVulkan()
 	poolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 	poolCreateInfo.queueFamilyIndex = queueCreateInfo.queueFamilyIndex;
 
-	if (vkCreateCommandPool(LOGICAL_DEVICE_VK, &poolCreateInfo, nullptr, &COMMAND_POOL_VK) != VK_SUCCESS)
-	{
-		throw std::runtime_error("Failed to create command pool");
+	vkCreateCommandPool(LOGICAL_DEVICE_VK, &poolCreateInfo, nullptr, &COMMAND_POOL_VK);
+
+	for (int i = 0; i < FRAME_OVERLAP; i++) {
+
+
+		vkCreateCommandPool(LOGICAL_DEVICE_VK, &poolCreateInfo, nullptr, &_frames[i]._commandPool);
+
+		//allocate the default command buffer that we will use for rendering
+
+		VkCommandBufferAllocateInfo allocateInfo = {};
+		allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocateInfo.commandPool = _frames[i]._commandPool;
+		allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		allocateInfo.commandBufferCount = 1;
+
+		vkAllocateCommandBuffers(LOGICAL_DEVICE_VK, &allocateInfo, &_frames[i]._mainCommandBuffer);
+
+		_mainDeletionQueue.push_function([=]() {
+			vkDestroyCommandPool(LOGICAL_DEVICE_VK, _frames[i]._commandPool, nullptr);
+			});
 	}
 
 	VkCommandBufferAllocateInfo allocateInfo = {};
@@ -889,6 +915,29 @@ bool Vulkan::initVulkan()
 	}
 
 	vkResetFences(LOGICAL_DEVICE_VK, 1, &FENCE_RENDERING_FINISHED_VK);
+
+
+	for (int i = 0; i < FRAME_OVERLAP; i++) 
+	{
+
+		vkCreateFence(LOGICAL_DEVICE_VK, &fenceCreateInfo, nullptr, &_frames[i]._renderFence);
+
+		//enqueue the destruction of the fence
+		_mainDeletionQueue.push_function([=]() {
+			vkDestroyFence(LOGICAL_DEVICE_VK, _frames[i]._renderFence, nullptr);
+			});
+
+
+		vkCreateSemaphore(LOGICAL_DEVICE_VK, &semaphoreCreateInfo, nullptr, &_frames[i]._presentSemaphore);
+		vkCreateSemaphore(LOGICAL_DEVICE_VK, &semaphoreCreateInfo, nullptr, &_frames[i]._renderSemaphore);
+
+		//enqueue the destruction of semaphores
+		_mainDeletionQueue.push_function([=]() {
+			vkDestroySemaphore(LOGICAL_DEVICE_VK, _frames[i]._presentSemaphore, nullptr);
+			vkDestroySemaphore(LOGICAL_DEVICE_VK, _frames[i]._renderSemaphore, nullptr);
+			});
+	}
+
 
 	PRESENT_INFO_VK.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	PRESENT_INFO_VK.waitSemaphoreCount = 1;

@@ -69,6 +69,7 @@ struct engineThreads
 	SDL_Thread* RECIVE_DATA = NULL;
 	SDL_Thread* SEND_DATA = NULL;
 	SDL_Thread* PHYSICS = NULL;
+	SDL_Thread* RENDER = NULL;
 
 }THREAD;
 
@@ -406,64 +407,59 @@ void handleCamera()
 
 }
 
-
-void vkRender()
+static int vkRender(void* ptr)
 {
-	vkAcquireNextImageKHR(VK.getLogicalDevice(), VK.getSwapchain(), UINT64_MAX, VK.getSemaphoreWait(), VK_NULL_HANDLE, VK.getImageIndex());
-
-	VK.getRenderPassBeginInfo()->framebuffer = VK.getSwapchainFramebuffer(*VK.getImageIndex());
-
-	vkBeginCommandBuffer(VK.getCommandBuffer(), VK.getCommandBufferBeginInfo());
-
-	vkCmdBeginRenderPass(VK.getCommandBuffer(), VK.getRenderPassBeginInfo(), VK_SUBPASS_CONTENTS_INLINE);
-
-	vkCmdBindPipeline(VK.getCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, VK.getCurrentPipeline());
-
-	for (size_t i = 0; i < VK.getMeshesSize(); ++i)
+	while (true)
 	{
-		for (size_t j = 0; j < MEM.OBJ.VECTOR.size(); ++j)
+		VK.newFrameRendered();
+
+		vkWaitForFences(VK.getLogicalDevice(), 1, &VK.getCurrentFrame()._renderFence, true, 1000000000);
+		vkResetFences(VK.getLogicalDevice(), 1, &VK.getCurrentFrame()._renderFence);
+
+		vkResetCommandBuffer(VK.getCurrentFrame()._mainCommandBuffer, 0);
+
+		vkAcquireNextImageKHR(VK.getLogicalDevice(), VK.getSwapchain(), UINT64_MAX, VK.getSemaphoreWait(), VK_NULL_HANDLE, VK.getImageIndex());
+
+		VK.getRenderPassBeginInfo()->framebuffer = VK.getSwapchainFramebuffer(*VK.getImageIndex());
+
+		vkBeginCommandBuffer(VK.getCommandBuffer(), VK.getCommandBufferBeginInfo());
+
+		vkCmdBeginRenderPass(VK.getCommandBuffer(), VK.getRenderPassBeginInfo(), VK_SUBPASS_CONTENTS_INLINE);
+
+		vkCmdBindPipeline(VK.getCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, VK.getCurrentPipeline());
+
+		for (size_t i = 0; i < VK.getMeshesSize(); ++i)
 		{
-			if (MEM.OBJ.VECTOR[j].getMesh() == &VK.MESHES[i])
+			for (size_t j = 0; j < MEM.OBJ.VECTOR.size(); ++j)
 			{
+				if (MEM.OBJ.VECTOR[j].getMesh() == &VK.MESHES[i])
+				{
+					VK.MESHES[i].setMeshCoord(MEM.OBJ.VECTOR[j].getPosition());
 
-				VK.MESHES[i].setMeshCoord(MEM.OBJ.VECTOR[j].getPosition());
+					EP.CAM.model = VK.MESHES[i].getModelMatrix();
 
-				EP.CAM.model = VK.MESHES[i].getModelMatrix();
+					EP.CAM.mesh_matrix = EP.CAM.projection * EP.CAM.view * EP.CAM.model;
 
-				EP.CAM.mesh_matrix = EP.CAM.projection * EP.CAM.view * EP.CAM.model;
+					EP.RND.CONSTANTS.render_matrix = EP.CAM.mesh_matrix;
 
-				EP.RND.CONSTANTS.render_matrix = EP.CAM.mesh_matrix;
+					vkCmdBindVertexBuffers(VK.getCommandBuffer(), 0, 1, VK.MESHES[i].getVertexBuffer(), &EP.RND.OFFSET);
 
-				vkCmdBindVertexBuffers(VK.getCommandBuffer(), 0, 1, VK.MESHES[i].getVertexBuffer(), &EP.RND.OFFSET);
+					vkCmdPushConstants(VK.getCommandBuffer(), VK.getPipelineLayout(VK.MESHES[i]), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(EP.RND.CONSTANTS), &EP.RND.CONSTANTS);
 
-				vkCmdPushConstants(VK.getCommandBuffer(), VK.getPipelineLayout(VK.MESHES[i]), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(EP.RND.CONSTANTS), &EP.RND.CONSTANTS);
-
-				vkCmdDraw(VK.getCommandBuffer(), VK.MESHES[i].getVerticesSize(), 1, 0, 0);
+					vkCmdDraw(VK.getCommandBuffer(), VK.MESHES[i].getVerticesSize(), 1, 0, 0);
+				}
 			}
 		}
 
-		//EP.CAM.model = VK.MESHES[i].getModelMatrix();
-		//
-		//EP.CAM.mesh_matrix = EP.CAM.projection * EP.CAM.view * EP.CAM.model;
-		//
-		//EP.RND.CONSTANTS.render_matrix = EP.CAM.mesh_matrix;
-		//
-		//vkCmdBindVertexBuffers(VK.getCommandBuffer(), 0, 1, VK.MESHES[i].getVertexBuffer(), &EP.RND.OFFSET);
-		//
-		//vkCmdPushConstants(VK.getCommandBuffer(), VK.getPipelineLayout(VK.MESHES[i]), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(EP.RND.CONSTANTS), &EP.RND.CONSTANTS);
-		//
-		//vkCmdDraw(VK.getCommandBuffer(), VK.MESHES[i].getVerticesSize(), 1, 0, 0);
+		vkCmdEndRenderPass(VK.getCommandBuffer());
+
+		vkEndCommandBuffer(VK.getCommandBuffer());
+
+		vkQueueSubmit(VK.getGraphicsQueue(), 1, VK.getSubmitInfo(), VK_NULL_HANDLE);
+
+		vkQueuePresentKHR(VK.getGraphicsQueue(), VK.getPresentInfo());
 	}
-
-	vkCmdEndRenderPass(VK.getCommandBuffer());
-
-	vkEndCommandBuffer(VK.getCommandBuffer());
-
-	vkQueueSubmit(VK.getGraphicsQueue(), 1, VK.getSubmitInfo(), VK_NULL_HANDLE);
-
-	vkQueuePresentKHR(VK.getGraphicsQueue(), VK.getPresentInfo());
 }
-
 
 bool isDeviceSuitable(VkPhysicalDevice device) 
 {
@@ -1277,6 +1273,19 @@ bool loadMedia()
 	POS = {0,5,0};
 	MEM.OBJ.DUMMY.init(POS, VK.getMeshByName("cube"));
 	MEM.OBJ.VECTOR.emplace_back(MEM.OBJ.DUMMY);
+	POS = { 5,0,0 };
+	MEM.OBJ.DUMMY.init(POS, VK.getMeshByName("cube"));
+	MEM.OBJ.VECTOR.emplace_back(MEM.OBJ.DUMMY);
+	POS = { 5,5,0 };
+	MEM.OBJ.DUMMY.init(POS, VK.getMeshByName("cube"));
+	MEM.OBJ.VECTOR.emplace_back(MEM.OBJ.DUMMY);
+	POS = { 0,0,5 };
+	MEM.OBJ.DUMMY.init(POS, VK.getMeshByName("cube"));
+	MEM.OBJ.VECTOR.emplace_back(MEM.OBJ.DUMMY);
+	POS = { 0,5,5 };
+	MEM.OBJ.DUMMY.init(POS, VK.getMeshByName("cube"));
+	MEM.OBJ.VECTOR.emplace_back(MEM.OBJ.DUMMY);
+
 
 	return true;
 
@@ -1588,9 +1597,10 @@ void testEnviroment()
 
 	SDL_ShowCursor(0);
 
-
 	while (EP.EXECUTE.exitCurrentLoop == false)
 	{
+		SDL_Delay(10);
+
 		while (SDL_PollEvent(&e))
 		{
 			if (e.type == SDL_QUIT)
@@ -1645,9 +1655,7 @@ void testEnviroment()
 		handleKeyboardEvent(e);
 
 		handleCamera();
-
-		vkRender();
-
+		
 	}
 }
 
@@ -1658,10 +1666,6 @@ int main(int argc, char* args[])
 	{
 		printf("Failed to initialize SDL!\n");
 	}
-	//else if (!initVulkan())
-	//{
-	//	printf("Failed to initialize VULKAN!\n");
-	//}
 	else
 	{
 		if (!loadMedia())
@@ -1671,7 +1675,7 @@ int main(int argc, char* args[])
 		else
 		{
 			srand(time(NULL));
-			//THREAD.PHYSICS = SDL_CreateThread(processPhysics, "processPhysics", (void*)NULL);
+			THREAD.RENDER = SDL_CreateThread(vkRender, "vkRender", (void*)NULL);
 			testEnviroment();
 
 		}
