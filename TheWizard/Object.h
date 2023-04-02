@@ -17,6 +17,8 @@ public:
 	void setObjectName(string name);
 	string getObjectName();
 
+	Mesh *getMesh();
+
 private:
 	
 	glm::vec3 POSITION{0,0,0};

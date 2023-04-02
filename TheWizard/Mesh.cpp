@@ -130,18 +130,14 @@ void Mesh::meshInit(const char* filename ,VkPhysicalDevice PHYSICAL_DEVICE_P, Vk
 
 }
 
-void Mesh::setMeshCoord(double x, double y, double z)
+void Mesh::setMeshCoord(glm::vec3 POS)
 {
-    glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, z));
-
     for (auto& vertex : vertices)
     {
-        // Apply the translation matrix to the position of each vertex
-        glm::vec4 transformedPosition = translationMatrix * glm::vec4(vertex.position, 1.0f);
-        vertex.position = glm::vec3(transformedPosition);
+        vertex.position = glm::vec3(POS);
     }
-
 }
+
 
 glm::mat4 Mesh::getModelMatrix()
 {

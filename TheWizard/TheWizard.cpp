@@ -421,17 +421,38 @@ void vkRender()
 
 	for (size_t i = 0; i < VK.getMeshesSize(); ++i)
 	{
-		EP.CAM.model = VK.MESHES[i].getModelMatrix();
+		for (size_t j = 0; j < MEM.OBJ.VECTOR.size(); ++j)
+		{
+			if (MEM.OBJ.VECTOR[j].getMesh() == &VK.MESHES[i])
+			{
 
-		EP.CAM.mesh_matrix = EP.CAM.projection * EP.CAM.view * EP.CAM.model;
+				VK.MESHES[i].setMeshCoord(MEM.OBJ.VECTOR[j].getPosition());
 
-		EP.RND.CONSTANTS.render_matrix = EP.CAM.mesh_matrix;
+				EP.CAM.model = VK.MESHES[i].getModelMatrix();
 
-		vkCmdBindVertexBuffers(VK.getCommandBuffer(), 0, 1, VK.MESHES[i].getVertexBuffer(), &EP.RND.OFFSET);
+				EP.CAM.mesh_matrix = EP.CAM.projection * EP.CAM.view * EP.CAM.model;
 
-		vkCmdPushConstants(VK.getCommandBuffer(), VK.getPipelineLayout(VK.MESHES[i]), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(EP.RND.CONSTANTS), &EP.RND.CONSTANTS);
+				EP.RND.CONSTANTS.render_matrix = EP.CAM.mesh_matrix;
 
-		vkCmdDraw(VK.getCommandBuffer(), VK.MESHES[i].getVerticesSize(), 1, 0, 0);
+				vkCmdBindVertexBuffers(VK.getCommandBuffer(), 0, 1, VK.MESHES[i].getVertexBuffer(), &EP.RND.OFFSET);
+
+				vkCmdPushConstants(VK.getCommandBuffer(), VK.getPipelineLayout(VK.MESHES[i]), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(EP.RND.CONSTANTS), &EP.RND.CONSTANTS);
+
+				vkCmdDraw(VK.getCommandBuffer(), VK.MESHES[i].getVerticesSize(), 1, 0, 0);
+			}
+		}
+
+		//EP.CAM.model = VK.MESHES[i].getModelMatrix();
+		//
+		//EP.CAM.mesh_matrix = EP.CAM.projection * EP.CAM.view * EP.CAM.model;
+		//
+		//EP.RND.CONSTANTS.render_matrix = EP.CAM.mesh_matrix;
+		//
+		//vkCmdBindVertexBuffers(VK.getCommandBuffer(), 0, 1, VK.MESHES[i].getVertexBuffer(), &EP.RND.OFFSET);
+		//
+		//vkCmdPushConstants(VK.getCommandBuffer(), VK.getPipelineLayout(VK.MESHES[i]), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(EP.RND.CONSTANTS), &EP.RND.CONSTANTS);
+		//
+		//vkCmdDraw(VK.getCommandBuffer(), VK.MESHES[i].getVerticesSize(), 1, 0, 0);
 	}
 
 	vkCmdEndRenderPass(VK.getCommandBuffer());
@@ -1246,16 +1267,16 @@ bool connectToGameServer()
 
 bool loadMedia()
 {
-
 	VK.loadMeshes();
 
 	glm::vec3 POS;
 
-	
-	POS = {0,5,0};
+	POS = {0,0,0};
 	MEM.OBJ.DUMMY.init(POS,VK.getMeshByName("cube"));
-
-
+	MEM.OBJ.VECTOR.emplace_back(MEM.OBJ.DUMMY);
+	POS = {0,5,0};
+	MEM.OBJ.DUMMY.init(POS, VK.getMeshByName("cube"));
+	MEM.OBJ.VECTOR.emplace_back(MEM.OBJ.DUMMY);
 
 	return true;
 

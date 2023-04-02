@@ -46,7 +46,7 @@ Vulkan::Vulkan(LWindow &window)
 
 Mesh *Vulkan::getMeshByName(string name)
 {
-	for (Mesh msh : MESHES)
+	for (Mesh &msh : MESHES)
 	{
 		if (msh.getName() == name)
 		{

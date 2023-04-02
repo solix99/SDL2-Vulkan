@@ -25,3 +25,9 @@ void Object::init(glm::vec3 POS, Mesh* msh)
 	POSITION = POS;
 	meshPtr = msh;
 }
+
+
+Mesh* Object::getMesh()
+{
+	return meshPtr;
+}

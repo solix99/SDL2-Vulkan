@@ -59,7 +59,7 @@ public:
 	glm::mat4 getModelMatrix();
 	void loadMesh();
 	void uploadMesh();
-	void setMeshCoord(double x, double y, double z);
+	void setMeshCoord(glm::vec3 POS);
 	string getName();
 
 
