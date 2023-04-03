@@ -85,9 +85,23 @@ public:
 	Mesh *getMeshByName(string name);
 	void newFrameRendered();
 
+
 	VkImageCreateInfo imageCreateInfo(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent);
 	VkImageViewCreateInfo imageViewCreateInfo(VkFormat format, VkImage image, VkImageAspectFlags aspectFlags);
 	VkPipelineDepthStencilStateCreateInfo depthStencilCreateInfo(bool bDepthTest, bool bDepthWrite, VkCompareOp compareOp);
+
+	struct AllocatedBuffer
+	{
+		VkBuffer BUFFER = VK_NULL_HANDLE;
+		VmaAllocation ALLOCATION = VK_NULL_HANDLE;
+	};
+
+	struct GPUCameraData {
+		glm::mat4 view;
+		glm::mat4 proj;
+		glm::mat4 viewproj;
+		glm::mat4 mesh_matrix;
+	};
 
 	struct AllocatedImage {
 		VkImage _image;
@@ -100,16 +114,22 @@ public:
 
 		VkCommandPool _commandPool;
 		VkCommandBuffer _mainCommandBuffer;
+
+		AllocatedBuffer cameraBuffer;
+		VkDescriptorSet globalDescriptor;
 	};
 
 	unsigned long int _frameNumber = 0;
 
-
+	AllocatedBuffer createBuffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
 	VmaAllocator ALLOCATOR;
 	VmaAllocatorCreateInfo ALLOCATOR_INFO = {};
 	VkDescriptorSet *getDescriptorSet();
-
+	void initDescriptors();
 	FrameData& getCurrentFrame();
+
+	VkDescriptorSetLayout GLOBAL_SET_LAYOUT;
+	VkDescriptorPool DESCRIPTOR_POOL;
 
 	vector <Mesh> MESHES;
 

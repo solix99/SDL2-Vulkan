@@ -377,6 +377,7 @@ float farPlane = 200.0f;
 float aspectRatio = 16.0f / 9.0f;
 float fov = 70.0f;
 float tanHalfFov = tan(glm::radians(fov / 2.0f));
+Vulkan::GPUCameraData camData;
 
 void handleCamera()
 {
@@ -402,6 +403,20 @@ void handleCamera()
 	// Modify projection matrix to invert y-axis to match OpenGL coordinate system
 	EP.CAM.projection[1][1] *= -1;
 
+	//fill a GPU camera data struct
+
+	camData.proj = EP.CAM.projection;
+	camData.view = EP.CAM.view;
+	camData.viewproj = EP.CAM.projection * EP.CAM.view;
+
+	//and copy it to the buffer
+	void* data;
+
+	vmaMapMemory(VK.ALLOCATOR, VK.getCurrentFrame().cameraBuffer.ALLOCATION, &data);
+
+	memcpy(data, &camData, sizeof(Vulkan::GPUCameraData));
+
+	vmaUnmapMemory(VK.ALLOCATOR, VK.getCurrentFrame().cameraBuffer.ALLOCATION);
 
 	//cout << endl << "X:" << EP.CAM.camPos.x << " Y:" << EP.CAM.camPos.y << " Z:" << EP.CAM.camPos.z;
 
@@ -428,8 +443,12 @@ static int vkRender(void* ptr)
 
 		vkCmdBindPipeline(VK.getCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, VK.getCurrentPipeline());
 
+		handleCamera();
+		
 		for (size_t i = 0; i < VK.getMeshesSize(); ++i)
 		{
+			vkCmdBindDescriptorSets(VK.getCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, VK.getPipelineLayout(VK.MESHES[i]), 0, 1, &VK.getCurrentFrame().globalDescriptor, 0, nullptr);
+
 			for (size_t j = 0; j < MEM.OBJ.VECTOR.size(); ++j)
 			{
 				if (MEM.OBJ.VECTOR[j].getMesh() == &VK.MESHES[i])
@@ -1580,11 +1599,11 @@ void handleKeyboardEvent(SDL_Event& e)
 	}
 	if (currentKeyStates[SDL_SCANCODE_LCTRL])
 	{
-		EP.CAM.camPos.y -= EP.CAM.CAMERA_MOVESPEED;
+		EP.CAM.camPos -= glm::vec3(0, EP.CAM.CAMERA_MOVESPEED, 0);
 	}
 	if (currentKeyStates[SDL_SCANCODE_SPACE])
 	{
-		EP.CAM.camPos.y += EP.CAM.CAMERA_MOVESPEED;
+		EP.CAM.camPos += glm::vec3(0, EP.CAM.CAMERA_MOVESPEED, 0);
 	}
 }
 
@@ -1654,7 +1673,6 @@ void testEnviroment()
 
 		handleKeyboardEvent(e);
 
-		handleCamera();
 		
 	}
 }

@@ -38,8 +38,8 @@ Vulkan::Vulkan(LWindow &window)
 		cout << endl << "Surface creation failed";
 	}
 
-	initVulkan();
 
+	initVulkan();
 
 }
 
@@ -265,7 +265,7 @@ VkPipelineLayout Vulkan::getPipelineLayout(Mesh & MESH)
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {};
 	pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipelineLayoutCreateInfo.setLayoutCount = 1;
-	pipelineLayoutCreateInfo.pSetLayouts = &descriptorSetLayout;
+	pipelineLayoutCreateInfo.pSetLayouts = &GLOBAL_SET_LAYOUT;
 
 	VkPushConstantRange pushConstant = {};
 	int pushConstantOffset = 0;
@@ -286,6 +286,131 @@ VkPipelineLayout Vulkan::getPipelineLayout(Mesh & MESH)
 	}
 
 	return pipelineLayout;
+}
+
+Vulkan::AllocatedBuffer Vulkan::createBuffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage)
+{
+	//allocate vertex buffer
+	VkBufferCreateInfo bufferInfo = {};
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferInfo.pNext = nullptr;
+
+	bufferInfo.size = allocSize;
+	bufferInfo.usage = usage;
+
+	VmaAllocationCreateInfo vmaallocInfo = {};
+	vmaallocInfo.usage = memoryUsage;
+
+	AllocatedBuffer newBuffer;
+
+	cout << endl << ALLOCATOR << " " << newBuffer.BUFFER << " " << newBuffer.ALLOCATION << " " << &bufferInfo << " " << &vmaallocInfo;
+
+	vmaCreateBuffer(ALLOCATOR, &bufferInfo, &vmaallocInfo,&newBuffer.BUFFER,&newBuffer.ALLOCATION,nullptr);
+
+
+	return newBuffer;
+}
+void Vulkan::initDescriptors()
+{
+
+	//information about the binding.
+	VkDescriptorSetLayoutBinding camBufferBinding = {};
+	camBufferBinding.binding = 0;
+	camBufferBinding.descriptorCount = 1;
+	// it's a uniform buffer binding
+	camBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+	// we use it from the vertex shader
+	camBufferBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+
+	VkDescriptorSetLayoutCreateInfo setinfo = {};
+	setinfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	setinfo.pNext = nullptr;
+
+	//we are going to have 1 binding
+	setinfo.bindingCount = 1;
+	//no flags
+	setinfo.flags = 0;
+	//point to the camera buffer binding
+	setinfo.pBindings = &camBufferBinding;
+
+	vkCreateDescriptorSetLayout(LOGICAL_DEVICE_VK, &setinfo, nullptr, &GLOBAL_SET_LAYOUT);
+
+	//create a descriptor pool that will hold 10 uniform buffers
+	std::vector<VkDescriptorPoolSize> sizes =
+	{
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 }
+	};
+
+	VkDescriptorPoolCreateInfo pool_info = {};
+	pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	pool_info.flags = 0;
+	pool_info.maxSets = 10;
+	pool_info.poolSizeCount = (uint32_t)sizes.size();
+	pool_info.pPoolSizes = sizes.data();
+
+	vkCreateDescriptorPool(LOGICAL_DEVICE_VK, &pool_info, nullptr, &DESCRIPTOR_POOL);
+
+	for (int i = 0; i < FRAME_OVERLAP; i++)
+	{
+		_frames[i].cameraBuffer = createBuffer(sizeof(GPUCameraData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+		//allocate one descriptor set for each frame
+		VkDescriptorSetAllocateInfo allocInfo = {};
+		allocInfo.pNext = nullptr;
+		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		//using the pool we just set
+		allocInfo.descriptorPool = DESCRIPTOR_POOL;
+		//only 1 descriptor
+		allocInfo.descriptorSetCount = 1;
+		//using the global data layout
+		allocInfo.pSetLayouts = &GLOBAL_SET_LAYOUT;
+
+		vkAllocateDescriptorSets(LOGICAL_DEVICE_VK, &allocInfo, &_frames[i].globalDescriptor);
+
+		VkDescriptorBufferInfo bufferInfo;
+		//it will be the camera buffer
+		bufferInfo.buffer = _frames[i].cameraBuffer.BUFFER;
+		//at 0 offset
+		bufferInfo.offset = 0;
+		//of the size of a camera data struct
+		bufferInfo.range = sizeof(GPUCameraData);
+
+		VkWriteDescriptorSet setWrite = {};
+		setWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		setWrite.pNext = nullptr;
+
+		//we are going to write into binding number 0
+		setWrite.dstBinding = 0;
+		//of the global descriptor
+		setWrite.dstSet = _frames[i].globalDescriptor;
+
+		setWrite.descriptorCount = 1;
+		//and the type is uniform buffer
+		setWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		setWrite.pBufferInfo = &bufferInfo;
+
+		cout << endl << _frames[i].cameraBuffer.BUFFER;
+
+		vkUpdateDescriptorSets(LOGICAL_DEVICE_VK, 1, &setWrite, 0, nullptr);
+
+	}
+
+
+	// add buffers to deletion queues
+	for (int i = 0; i < FRAME_OVERLAP; i++)
+	{
+		_mainDeletionQueue.push_function([&]() 
+			{
+				vmaDestroyBuffer(ALLOCATOR, _frames[i].cameraBuffer.BUFFER, _frames[i].cameraBuffer.ALLOCATION);
+			});
+	}
+
+	_mainDeletionQueue.push_function([&]() {
+		vkDestroyDescriptorSetLayout(LOGICAL_DEVICE_VK, GLOBAL_SET_LAYOUT, nullptr);
+		vkDestroyDescriptorPool(LOGICAL_DEVICE_VK, DESCRIPTOR_POOL, nullptr);
+		});
 }
 
 
@@ -556,6 +681,13 @@ bool Vulkan::initVulkan()
 		}
 	}
 
+	ALLOCATOR_INFO.physicalDevice = PHYSICAL_DEVICE_VK;
+	ALLOCATOR_INFO.device = LOGICAL_DEVICE_VK;
+	ALLOCATOR_INFO.instance = INSTANCE_VK;
+	vmaCreateAllocator(&ALLOCATOR_INFO, &ALLOCATOR);
+
+	initDescriptors();
+
 	// Query available surface formats
 	uint32_t formatCount;
 
@@ -731,12 +863,6 @@ bool Vulkan::initVulkan()
 	VmaAllocationCreateInfo dimg_allocinfo = {};
 	dimg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 	dimg_allocinfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-
-	ALLOCATOR_INFO.physicalDevice = PHYSICAL_DEVICE_VK;
-	ALLOCATOR_INFO.device = LOGICAL_DEVICE_VK;
-	ALLOCATOR_INFO.instance = INSTANCE_VK;
-	vmaCreateAllocator(&ALLOCATOR_INFO, &ALLOCATOR);
 
 	cout << endl << ALLOCATOR << " " << &dimg_info << " " << &dimg_allocinfo << " " << &_depthImage._image << " " << &_depthImage._allocation << " ";
 
